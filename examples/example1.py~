@@ -1,0 +1,16 @@
+doc=loaders.NeuroMLLoader.load_neuroml('/home/mike/dev/libNeuroML/testFiles/NML2_FullCell.nml')
+cell=doc.cells[0]
+morph=cell.morphology
+
+env=neuronenv()
+
+env.import_cell(cell)
+
+sim=NeuronSimulation(env.sections[0])
+
+sim.go()
+sim.show()
+
+
+#they are still not connected:
+print h.topology()
