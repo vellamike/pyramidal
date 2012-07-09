@@ -149,7 +149,10 @@ class NeuronEnv(object):
         for index,seg in enumerate(cell.morphology):
             section=h.Section()
             section.diam=seg.proximal_diameter #fix
-            section.L=seg.length
+            if seg.length > 0:
+                section.L=seg.length
+            else:
+                section.L=0.1 #temporary hack
             self.segments_sections_dict[seg._index] = section
             self.sections.append(section)
 
@@ -174,5 +177,7 @@ class NeuronEnv(object):
                stim.dur = component.dur
                self.stim = stim
 
+    @property
+    def topology(self):
         print('connected topology:')
         print(h.topology())

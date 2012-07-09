@@ -1,7 +1,6 @@
 import neuroml.morphology as ml
 import neuroml.kinetics as kinetics
 import neuroml.loaders as loaders
-
 import pyramidal.environments as envs
 from neuron import h
 
@@ -21,7 +20,8 @@ print iseg._backend.connectivity
 myelin2.attach(node2)
 print iseg._backend.connectivity
 
-doc = loaders.NeuroMLLoader.load_neuroml('/home/mike/dev/libNeuroML/testFiles/NML2_FullCell.nml')
+#doc = loaders.NeuroMLLoader.load_neuroml('/home/mike/dev/libNeuroML/testFiles/NML2_FullCell.nml')
+doc = loaders.NeuroMLLoader.load_neuroml('/home/mike/dev/libNeuroML/testFiles/Purk2M9s.nml')
 cell = doc.cells[0]
 morph = cell.morphology
 
@@ -29,14 +29,8 @@ morph[0].attach(iseg) #attach to the root
 
 new_morphology=morph.morphology
 
-print new_morphology._backend.connectivity
-#this step is currently not implemented, inject a current into the root segment
+#insert a current clamp:
 new_morphology[3].insert(kinetics.IClamp(0.1,200,100))
-
-print new_morphology._backend.connectivity
-print '\nAfter attaching axon:'
-for i,seg in enumerate(new_morphology):
-    print 'segment '+str(i)+' distal diameter:' + str(seg.distal_diameter)
 
 env = envs.NeuronEnv()
 
@@ -46,3 +40,6 @@ sim = envs.NeuronSimulation(env.sections[0])
 
 sim.go()
 sim.show()
+
+print 'topology:'
+print env.topology
