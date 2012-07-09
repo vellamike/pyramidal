@@ -153,6 +153,16 @@ class NeuronEnv(object):
                 section.L=seg.length
             else:
                 section.L=0.1 #temporary hack
+            
+            h.pt3dadd(seg.proximal.x,
+                      seg.proximal.y,
+                      seg.proximal.z,
+                      seg.proximal_diameter,
+                      sec = section)
+            
+            print seg.proximal.x
+            print seg.proximal.y
+            print seg.proximal.z
             self.segments_sections_dict[seg._index] = section
             self.sections.append(section)
 
