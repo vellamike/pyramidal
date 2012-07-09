@@ -1,6 +1,7 @@
 import neuroml.morphology as ml
 import neuroml.kinetics as kinetics
 import neuroml.loaders as loaders
+
 import pyramidal.environments as envs
 from neuron import h
 
@@ -30,7 +31,7 @@ new_morphology=morph.morphology
 
 print new_morphology._backend.connectivity
 #this step is currently not implemented, inject a current into the root segment
-new_morphology[0].insert(kinetics.IClamp(0.1,200,100))
+new_morphology[3].insert(kinetics.IClamp(0.1,200,100))
 
 print new_morphology._backend.connectivity
 print '\nAfter attaching axon:'

@@ -162,5 +162,17 @@ class NeuronEnv(object):
             except:
                 pass
 
+        for component_segment_pair in cell.morphology._backend.observer.kinetic_components:
+            component = component_segment_pair[0]
+            segment_index = component_segment_pair[1]
+            neuron_section = self.segments_sections_dict[segment_index]
+            
+            if component.name == 'IClamp':
+               stim = h.IClamp(neuron_section(0.5))
+               stim.delay = component.delay
+               stim.amp = component.amp
+               stim.dur = component.dur
+               self.stim = stim
+
         print('connected topology:')
         print(h.topology())

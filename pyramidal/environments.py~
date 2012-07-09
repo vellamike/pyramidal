@@ -137,29 +137,44 @@ class NeuronSimulation(object):
 
 
 class NeuronEnv(object):
+    """
+    Experimental - proof of principle
+    """
     def __init__(self):
         #dict of neuroml segments to NEURON sections
         self.segments_sections_dict={}
-
+        self.sections = []
     def import_cell(self,cell):
         #experimental:
         for index,seg in enumerate(cell.morphology):
             section=h.Section()
             section.diam=seg.proximal_diameter #fix
             section.L=seg.length
-            self.segments_sections_dicts[seg] = section
+            self.segments_sections_dict[seg._index] = section
+            self.sections.append(section)
 
-#need to build a hash map here - ideally directly 
-            #from the morphology arrays rather
-            #than by constructing segment objects from scratch
-            #this can be accomplished by having the Section
-            #object instantiable by passing it a segment object
-            #a dictionary will be used to keep track of whether
-            #or not a section has been instantiated
+        #connect them all together:
+        for i,seg in enumerate(cell.morphology):
+            section = self.segments_sections_dict[seg._index]
+            try:
+                parent_section = self.segments_sections_dict[seg.parent._index]
+                section.connect(parent_section)
+            except:
+                pass
 
-            #there's some thought that needs to go into this - if the segment is virtual then the distal node index in the backend is itself the id of the segment, if not then its parent is the correct one. It might be a lot wiser to use hashes, but how would I do that?
+        for component_segment_pair in cell.morphology._backend.observer.kinetic_components:
+            component = component_segment_pair[0]
+            segment_index = component_segment_pair[1]
+            neuron_section = self.segments_sections_dict[segment_index]
+            
+            if component.name == 'IClamp':
+               print 'iclamp!'
+               print neuron_section.name()
+               stim = h.IClamp(neuron_section(0.5))
+               stim.delay = component.delay
+               stim.amp = component.amp
+               stim.dur = component.dur
+               self.stim = stim
 
-
-
-
-
+        print('connected topology:')
+        print(h.topology())

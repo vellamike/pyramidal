@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+## -*- coding: utf-8 -*-
 #-------------------------------------------------------------------------------
 # Copyright (c) 2012 Michael Vella
 # All rights reserved.
@@ -136,7 +136,7 @@ class NeuronSimulation(object):
         return Rin
 
 
-class neuronenv(object):
+class NeuronEnv(object):
     def __init__(self):
         #dict of neuroml segments to NEURON sections
         self.segments_sections_dict={}
@@ -145,21 +145,6 @@ class neuronenv(object):
         #experimental:
         for index,seg in enumerate(cell.morphology):
             section=h.Section()
-            section.diam=seg.proximal_diameter #fix
+            section.diam=seg.proximal_diameter #fix, need both diams
             section.L=seg.length
-            self.segments_sections_dicts[seg] = section
-
-#need to build a hash map here - ideally directly 
-            #from the morphology arrays rather
-            #than by constructing segment objects from scratch
-            #this can be accomplished by having the Section
-            #object instantiable by passing it a segment object
-            #a dictionary will be used to keep track of whether
-            #or not a section has been instantiated
-
-            #there's some thought that needs to go into this - if the segment is virtual then the distal node index in the backend is itself the id of the segment, if not then its parent is the correct one. It might be a lot wiser to use hashes, but how would I do that?
-
-
-
-
-
+            self.segments_sections_dict[seg] = section
