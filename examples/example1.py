@@ -38,5 +38,3 @@ print env.topology
 
 sim.go()
 sim.show()
-
-

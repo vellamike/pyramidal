@@ -140,10 +140,19 @@ class NeuronEnv(object):
     """
     Experimental - proof of principle
     """
+
+    def __set_mechanism(sec, mech, mech_attribute, mech_value):
+        """
+        Insert NMODL ion channels
+        """
+        for seg in sec:
+            setattr(getattr(seg, mech), mech_attribute, mech_value)
+
     def __init__(self):
         #dict of neuroml segments to NEURON sections
         self.segments_sections_dict={}
         self.sections = []
+
     def import_cell(self,cell):
         #experimental:
         for index,seg in enumerate(cell.morphology):
@@ -154,15 +163,15 @@ class NeuronEnv(object):
             else:
                 section.L=0.1 #temporary hack
             
-            h.pt3dadd(seg.proximal.x,
-                      seg.proximal.y,
-                      seg.proximal.z,
-                      seg.proximal_diameter,
-                      sec = section)
+#            h.pt3dadd(seg.proximal.x,
+#                      seg.proximal.y,
+#                      seg.proximal.z,
+#                      seg.proximal_diameter,
+#                      sec = section)
             
-            print seg.proximal.x
-            print seg.proximal.y
-            print seg.proximal.z
+#            print seg.proximal.x
+#            print seg.proximal.y
+#            print seg.proximal.z
             self.segments_sections_dict[seg._index] = section
             self.sections.append(section)
 
@@ -175,6 +184,7 @@ class NeuronEnv(object):
             except:
                 pass
 
+        #this is the component bit...
         for component_segment_pair in cell.morphology._backend.observer.kinetic_components:
             component = component_segment_pair[0]
             segment_index = component_segment_pair[1]
@@ -187,6 +197,14 @@ class NeuronEnv(object):
                stim.dur = component.dur
                self.stim = stim
 
+            if component.type == 'NMODL':
+                print 'inserting ion channel:' + component.name
+                neuron_section.insert(component.name)
+                for attribute in component.attributes:
+                    self.__set_mechanism(neuron_section, 
+                                        attribute.name, 
+                                        attribute.value)
+                           
     @property
     def topology(self):
         print('connected topology:')
