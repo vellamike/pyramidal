@@ -14,10 +14,14 @@
 """
 Some very early testing
 """
+
 import neuron
 import numpy as np
 from neuron import h
 import neuroml.loaders as loaders
+import os
+import moose
+  
 
 class NeuronSimulation(object):
 
@@ -136,33 +140,44 @@ class NeuronSimulation(object):
         return Rin
 
 
-class NeuronEnv(object):
+class SimulatorEnv(object):
     """
-    Experimental - proof of principle
+    Base class for simulator-specific environments which express
+    a model in simulator-specific types.
     """
     def __init__(self):
-        #dict of neuroml segments to NEURON sections
         self.segments_sections_dict={}
         self.sections = []
+
+    def import_cell(self,cell):
+        raise(NotImplementedError)
+
+   
+class NeuronEnv(SimulatorEnv):
+    """
+    NEURON-simulator environment
+    """
+
+    def __init__(self):
+        self.segments_sections_dict={}
+        self.sections = []
+
     def import_cell(self,cell):
         #experimental:
         for index,seg in enumerate(cell.morphology):
-            section=h.Section()
+            section = h.Section()
             section.diam=seg.proximal_diameter #fix
             if seg.length > 0:
                 section.L=seg.length
             else:
                 section.L=0.1 #temporary hack
             
-            h.pt3dadd(seg.proximal.x,
-                      seg.proximal.y,
-                      seg.proximal.z,
-                      seg.proximal_diameter,
-                      sec = section)
+#           h.pt3dadd(seg.proximal.x,
+#                     seg.proximal.y,
+#                     seg.proximal.z,
+#                     seg.proximal_diameter,
+#                     sec = section)
             
-            print seg.proximal.x
-            print seg.proximal.y
-            print seg.proximal.z
             self.segments_sections_dict[seg._index] = section
             self.sections.append(section)
 
@@ -191,3 +206,20 @@ class NeuronEnv(object):
     def topology(self):
         print('connected topology:')
         print(h.topology())
+
+
+class MooseEnv(SimulatorEnv):
+    """
+    MOOSE-simulator environment
+    """
+
+    def __init__(self):
+        self.segments_compartments_dict={}
+        self.compartments = []
+
+    def import_cell(self,cell):
+        for index,seg in enumerate(cell.morphology):
+            compartment = moose.Compartment(os.curdir)
+            self.segments_compartments_dict[seg._index] = compartment
+            self.compartments.append(compartment)
+            print compartment.getId()
