@@ -65,6 +65,7 @@ class NeuronSimulation(object):
         stim.amp3 = amp3
 
         self.Vstim = stim
+
     def set_IClamp(self, delay=5, amp=0.1, dur=1000):
         """
         Initializes values for current clamp.
@@ -157,8 +158,6 @@ class SimulatorEnv(object):
         self.segments_sections_dict={}
         self.sections = []
 
-<<<<<<< HEAD
-=======
     def import_cell(self,cell):
         raise(NotImplementedError)
 
@@ -172,7 +171,6 @@ class NeuronEnv(SimulatorEnv):
         self.segments_sections_dict={}
         self.sections = []
 
->>>>>>> 47d3a8fbbd10540c7e2ecb803eb8b3cf6ce1a564
     def import_cell(self,cell):
         #experimental:
         for index,seg in enumerate(cell.morphology):
@@ -183,24 +181,12 @@ class NeuronEnv(SimulatorEnv):
             else:
                 section.L=0.1 #temporary hack
             
-<<<<<<< HEAD
-#            h.pt3dadd(seg.proximal.x,
-#                      seg.proximal.y,
-#                      seg.proximal.z,
-#                      seg.proximal_diameter,
-#                      sec = section)
-            
-#            print seg.proximal.x
-#            print seg.proximal.y
-#            print seg.proximal.z
-=======
 #           h.pt3dadd(seg.proximal.x,
 #                     seg.proximal.y,
 #                     seg.proximal.z,
 #                     seg.proximal_diameter,
 #                     sec = section)
             
->>>>>>> 47d3a8fbbd10540c7e2ecb803eb8b3cf6ce1a564
             self.segments_sections_dict[seg._index] = section
             self.sections.append(section)
 
