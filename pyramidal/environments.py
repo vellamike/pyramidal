@@ -212,7 +212,7 @@ class NeuronEnv(SimulatorEnv):
                stim.dur = component.dur
                self.stim = stim
 
-            if component.type == 'NMODL':
+            if component.name == 'NMODL':
                 print 'inserting ion channel:' + component.name
                 neuron_section.insert(component.name)
                 for attribute in component.attributes:
