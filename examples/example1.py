@@ -23,6 +23,7 @@ morph = cell.morphology
 #attach iseg to the soma of loaded cell:
 morph[0].attach(iseg)
 
+#obtain the new morphology object:
 new_morphology=morph.morphology
 
 #create the current clamp stimulus:
