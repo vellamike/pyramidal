@@ -245,9 +245,9 @@ class MooseEnv(SimulatorEnv):
         for index,seg in enumerate(cell.morphology):
             print(index)
             compartment = moose.Compartment('/model/' + str(index))
-
-            #temporary, for testing purposes only:
-            compartment.Em = -75e-3 # Leak potential
+            #temporary, for testing purposes, this information
+            #will be extracted from the segments
+            compartment.Em = -65e-3 # Leak potential
             compartment.initVm = -65e-3 # Initial membrane potential
             compartment.Rm = 5e9 # Total membrane resistance of the compartment
             compartment.Cm = 1e-12 # Total membrane capacitance of the compartment
@@ -257,7 +257,6 @@ class MooseEnv(SimulatorEnv):
             self.compartments.append(compartment)
         
         print('Connecting MOOSE compartments:')
-        #connect them all together:
         for i,seg in enumerate(cell.morphology):
             print i
             compartment = self.segments_compartments_dict[seg._index]
@@ -275,36 +274,23 @@ class MooseEnv(SimulatorEnv):
             
             if component.name == 'IClamp':
                 print 'IClamp detected'
-
                 self.current_clamp = moose.PulseGen('/pulsegen')
-                self.current_clamp.count = 2
-                self.current_clamp.firstDelay = 25 # ms
-                self.current_clamp.firstWidth = 50 # ms
-                self.current_clamp.firstLevel = 2 # uA
-                self.current_clamp.trigMode=1
-                moose.connect(self.current_clamp, 'outputOut', compartment, 'injectMsg')
+                self.current_clamp.delay[0] = component.delay # ms
+                self.current_clamp.width[0] = component.dur # ms
+                self.current_clamp.level[0] = component.amp*1e-12 #pA
+                moose.connect(self.current_clamp, 'outputOut', compartment, 'injectMsg')               
 
 class MooseSimulation(object):
 
-    def __init__(self, recording_segment, sim_time=1000, dt=0.05, v_init=-60):
-
-        self.recording_compartment = recording_segment
+    def __init__(self, environment, sim_time=1000):
+        self.recording_compartment = environment.compartments[0]
         self.sim_time = sim_time
-        self.dt = dt
         self.go_already = False
-        self.v_init=v_init
+        self.environment = environment
 
     def go(self,simdt=1e-6):
 
-        self.current_clamp = moose.PulseGen('/pulsegen')
-        self.current_clamp.delay[0] = 400 # ms
-        self.current_clamp.width[0] = 200 # ms
-        self.current_clamp.level[0] = 0.1 # uA
-#        self.current_clamp.secondDelay =1e-9
-
-        moose.connect(self.current_clamp, 'outputOut', self.recording_compartment, 'injectMsg')
-
-#        self.recording_compartment.inject = 0.1
+        current_clamp = self.environment.current_clamp
 
         # Setup data recording
         data = moose.Neutral('/data')
@@ -323,6 +309,7 @@ class MooseSimulation(object):
         moose.useClock(0, '/model/#[TYPE=Compartment]', 'init') 
         moose.useClock(1, '/model/#[TYPE=Compartment]', 'process')
         moose.useClock(2, Vm.path, 'process')
+        moose.useClock(3, current_clamp.path, 'process')
 
         # Now initialize everything and get set
         moose.reinit()
