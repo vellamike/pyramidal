@@ -12,7 +12,8 @@
 #-------------------------------------------------------------------------------
 
 """
-Some very early testing
+NOTE: This is still at an early test stage. Most of this code
+will be completely rewritten.
 """
 
 import neuron
@@ -24,12 +25,10 @@ import moose
   
 
 class NeuronSimulation(object):
-
     """
-    Simulation class mainly taken from Philipp Rautenberg, this class has been
-    modified slightly by Mike Vella to accept a section rather than a cell as the 
-    object passed to the set_IClamp method of the class.
-    see http://www.paedia.info/neuro/intro_pydesign.html
+    Simulation classes allow an environment to be simulated. The most important
+    method in these classes is the run method which calls the underlying
+    simulator run loop.
 
     Objects of this class control a current clamp simulation. Example of use:
     >>> cell = Cell()
@@ -164,7 +163,8 @@ class SimulatorEnv(object):
    
 class NeuronEnv(SimulatorEnv):
     """
-    NEURON-simulator environment
+    NEURON-simulator environment, loads NeuroML-specified
+    model into a NEURON-specific in-memory representation.
     """
 
     def __init__(self):
@@ -229,6 +229,9 @@ class NeuronEnv(SimulatorEnv):
 class MooseEnv(SimulatorEnv):
     """
     MOOSE-simulator environment
+
+    Loads NeuroML-specified model into a 
+    MOOSE-specific in-memory representation.
     """
 
     def __init__(self):
@@ -243,6 +246,7 @@ class MooseEnv(SimulatorEnv):
             print(index)
             compartment = moose.Compartment('/model/' + str(index))
 
+            #temporary, for testing purposes only:
             compartment.Em = -75e-3 # Leak potential
             compartment.initVm = -65e-3 # Initial membrane potential
             compartment.Rm = 5e9 # Total membrane resistance of the compartment
@@ -263,7 +267,7 @@ class MooseEnv(SimulatorEnv):
             except:
                 pass
 
-        #this is the component bit...
+        #component loading:
         for component_segment_pair in cell.morphology._backend.observer.kinetic_components:
             component = component_segment_pair[0]
             segment_index = component_segment_pair[1]
