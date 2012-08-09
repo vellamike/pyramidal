@@ -180,7 +180,7 @@ class NeuronEnv(SimulatorEnv):
                 section.L=seg.length
             else:
                 section.L=0.1 #temporary hack
-            
+           
 #           h.pt3dadd(seg.proximal.x,
 #                     seg.proximal.y,
 #                     seg.proximal.z,
@@ -236,7 +236,102 @@ class MooseEnv(SimulatorEnv):
         self.compartments = []
 
     def import_cell(self,cell):
+        model = moose.Neutral('/model') # This is a container for the model
+        
+        print('Creating MOOSE compartments:')
         for index,seg in enumerate(cell.morphology):
-            compartment = moose.Compartment(os.curdir)
+            print(index)
+            compartment = moose.Compartment('/model/' + str(index))
+
+            compartment.Em = -75e-3 # Leak potential
+            compartment.initVm = -65e-3 # Initial membrane potential
+            compartment.Rm = 5e9 # Total membrane resistance of the compartment
+            compartment.Cm = 1e-12 # Total membrane capacitance of the compartment
+            compartment.Ra = 1e6 # Total axial resistance of the compartment
+
             self.segments_compartments_dict[seg._index] = compartment
             self.compartments.append(compartment)
+        
+        print('Connecting MOOSE compartments:')
+        #connect them all together:
+        for i,seg in enumerate(cell.morphology):
+            print i
+            compartment = self.segments_compartments_dict[seg._index]
+            try:
+                parent_compartment = self.segments_compartments_dict[seg.parent._index]
+                moose.connect(parent_compartment, 'raxial', compartment, 'axial')
+            except:
+                pass
+
+        #this is the component bit...
+        for component_segment_pair in cell.morphology._backend.observer.kinetic_components:
+            component = component_segment_pair[0]
+            segment_index = component_segment_pair[1]
+            compartment = self.segments_compartments_dict[segment_index]
+            
+            if component.name == 'IClamp':
+                print 'IClamp detected'
+
+                self.current_clamp = moose.PulseGen('/pulsegen')
+                self.current_clamp.count = 2
+                self.current_clamp.firstDelay = 25 # ms
+                self.current_clamp.firstWidth = 50 # ms
+                self.current_clamp.firstLevel = 2 # uA
+                self.current_clamp.trigMode=1
+                moose.connect(self.current_clamp, 'outputOut', compartment, 'injectMsg')
+
+class MooseSimulation(object):
+
+    def __init__(self, recording_segment, sim_time=1000, dt=0.05, v_init=-60):
+
+        self.recording_compartment = recording_segment
+        self.sim_time = sim_time
+        self.dt = dt
+        self.go_already = False
+        self.v_init=v_init
+
+    def go(self,simdt=1e-6):
+
+        self.current_clamp = moose.PulseGen('/pulsegen')
+        self.current_clamp.delay[0] = 400 # ms
+        self.current_clamp.width[0] = 200 # ms
+        self.current_clamp.level[0] = 0.1 # uA
+#        self.current_clamp.secondDelay =1e-9
+
+        moose.connect(self.current_clamp, 'outputOut', self.recording_compartment, 'injectMsg')
+
+#        self.recording_compartment.inject = 0.1
+
+        # Setup data recording
+        data = moose.Neutral('/data')
+        Vm = moose.Table('/data/Vm')
+        moose.connect(Vm, 'requestData', self.recording_compartment, 'get_Vm')
+
+        # Now schedule the sequence of operations and time resolutions
+        moose.setClock(0,simdt)
+        moose.setClock(1,simdt)
+        moose.setClock(2,simdt)
+        moose.setClock(3,simdt)
+
+        # useClock: First argument is clock no.
+        # Second argument is a wildcard path matching all elements of type Compartment
+        # Last argument is the processing function to be executed at each tick of clock 0 
+        moose.useClock(0, '/model/#[TYPE=Compartment]', 'init') 
+        moose.useClock(1, '/model/#[TYPE=Compartment]', 'process')
+        moose.useClock(2, Vm.path, 'process')
+
+        # Now initialize everything and get set
+        moose.reinit()
+        moose.start(self.sim_time)
+        
+        #handle to the global clock:
+        clock = moose.Clock('/clock')
+
+        #vectors:
+        self.rec_v = Vm.vec
+        self.t_final = clock.currentTime
+
+    def show(self):
+        import pylab
+        pylab.plot(pylab.linspace(0, self.t_final, len(self.rec_v)), self.rec_v)
+        pylab.show()
