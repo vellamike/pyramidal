@@ -10,6 +10,8 @@ pyramidal has the following strong dependencies:
 
 * libNeuroML (for installation see below)
 
+* numpy ( http://numpy.scipy.org/ )
+
 pyMOOSE instllation
 -------------------
 
@@ -59,7 +61,7 @@ Get a read only copy of pyramidal
     git clone https://github.com/vellamike/pyramidal.git
 
 
-Install libNeuroML
+Install pyramidal
 ------------------
 
 Use the standard install method for Python packages:
