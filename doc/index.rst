@@ -12,6 +12,9 @@ Contents:
    :maxdepth: 2
 
    install
+   scope
+   status
+   examples
 
 Source documentation
 ==================
