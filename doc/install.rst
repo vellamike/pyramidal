@@ -3,14 +3,13 @@ Installing pyramidal
 
 pyramidal has the following strong dependencies:
 
-* NEURON (Python module, for installation instructions see 
-  http://www.davison.webfactional.com/notes/installation-neuron-python/ )
+* NEURON (Python module, for installation instructions see http://www.davison.webfactional.com/notes/installation-neuron-python/)
 
 * pyMOOSE (for installation instructions see below)
 
 * libNeuroML (for installation see below)
 
-* numpy ( http://numpy.scipy.org/ )
+* numpy (http://numpy.scipy.org/)
 
 pyMOOSE instllation
 -------------------

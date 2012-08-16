@@ -12,20 +12,23 @@
 #-------------------------------------------------------------------------------
 
 """
-NOTE: This is still at an early test stage. Most of this code
-will be completely rewritten.
 """
 
 import neuron
 import numpy as np
-from neuron import h
 import neuroml.loaders as loaders
 import os
-import moose
-  
+import math
 
-class NeuronSimulation(object):
+#import simulator libraries:
+from neuron import h
+import moose
+
+
+class SimulatorEnv(object):
     """
+    Base class for simulator-specific environments which express
+    a model in simulator-specific types.
     Simulation classes allow an environment to be simulated. The most important
     method in these classes is the run method which calls the underlying
     simulator run loop.
@@ -35,22 +38,137 @@ class NeuronSimulation(object):
     >>> sim = Simulation(cell)
     >>> sim.go()
     >>> sim.show()
+
+
     """
 
-    def __init__(self, recording_section, sim_time=1000, dt=0.05, v_init=-60):
+    def __set_mechanism(sec, mech, mech_attribute, mech_value):
+        """
+        Insert NMODL ion channels
+        """
+        for seg in sec:
+            setattr(getattr(seg, mech), mech_attribute, mech_value)
 
-        #h.load_file("stdrun.hoc") # Standard run, which contains init and run
-        self.recording_section = recording_section
-        self.sim_time = sim_time
-        self.dt = dt
-        self.go_already = False
-        self.v_init=v_init
+    def __init__(self):
+        self.segments_sections_dict={}
+        self.sections = []
+
+    def import_cell(self,cell):
+        raise(NotImplementedError)
+
+   
+class NeuronEnv(SimulatorEnv):
+    """
+    NEURON-simulator environment, loads NeuroML-specified
+    model into a NEURON-specific in-memory representation.
+    """
+
+    def __init__(self,sim_time=1,dt=1e-4):
+        self.sim_time = sim_time*10**3
+        self.dt=dt*10**3
+
+    def import_cell(self,cell):
+
+#        print("In the NEURON ENV cell importing routine")
+        
+        self.segments_sections_dict={}
+        self.sections = []
+
+        try:
+            self.passive = True
+            self.em = cell.leak_current.em
+            self.init_vm = cell.passive_properties.init_vm * 1000
+            self.rm = cell.passive_properties.rm
+            self.cm = cell.passive_properties.cm
+            self.ra = cell.passive_properties.ra
+        except:
+            self.passive = False
+
+        for index,seg in enumerate(cell.morphology):
+            section = h.Section()
+            section.diam=seg.proximal_diameter #fix
+
+             #temporary hack:
+            if seg.length > 0:
+                section.L=seg.length
+            else:
+                section.L=0.1
+           
+            try:
+                self.passive = True
+                print("Setting NEURON passive properties")
+                section.cm = cell.passive_properties.cm * 10e13 #conversions from SI to NEURON-compatibe(check)
+                section.Ra = cell.passive_properties.ra * 1e-8 #conversions from SI to NEURON-compatibe(check)
+
+                section.insert('pas')
+                for neuron_seg in section:
+                    print 'setting'
+                    print neuron_seg.pas.e
+                    print neuron_seg.pas.g
+                    neuron_seg.pas.e = cell.leak_current.em * 1e3 # convert to mV
+                    neuron_seg.pas.g = 1 / cell.passive_properties.rm * 1e8 #I *think* this is right
+                
+            except:
+                print("Setting passive properties failed")
+                self.passive = False
+
+            self.segments_sections_dict[seg._index] = section
+            self.sections.append(section)
+
+          #this will be required for visualisation but I still don't fully understand
+          #how it needs to be implemented:
+          # h.pt3dadd(seg.proximal.x,
+          #           seg.proximal.y,
+          #           seg.proximal.z,
+          #           seg.proximal_diameter,
+          #           sec = section)
+
+        #temporary, user needs to be able to define which sections
+        #will be recorded from
+        self.recording_section=self.sections[0] 
+        
+        #connect them all together:
+        for i,seg in enumerate(cell.morphology):
+            section = self.segments_sections_dict[seg._index]
+            try:
+                parent_section = self.segments_sections_dict[seg.parent._index]
+                section.connect(parent_section)
+                print("Connection made")
+            except:
+                print("Connecting NEURON sections failure")
+                pass
+
+        #Kinetic components:
+        for component_segment_pair in cell.morphology._backend.observer.kinetic_components:
+            component = component_segment_pair[0]
+            segment_index = component_segment_pair[1]
+            neuron_section = self.segments_sections_dict[segment_index]
+            
+            if component.name == 'IClamp':
+               stim = h.IClamp(neuron_section(0.5))
+               stim.delay = component.delay*1000 #convert to ms
+               stim.amp = component.amp*1e9 #convert to nA
+               stim.dur = component.dur *1000 #convert to ms
+               self.stim = stim
+
+            if component.name == 'NMODL':
+                print 'inserting ion channel:' + component.name
+                neuron_section.insert(component.name)
+                for attribute in component.attributes:
+                    self.__set_mechanism(neuron_section, 
+                                        attribute.name, 
+                                        attribute.value)
+                           
+    @property
+    def topology(self):
+        print('connected topology:')
+        print(h.topology())
 
     def set_VClamp(self,dur1=100,amp1=0,dur2=0,amp2=0,dur3=0,amp3=0,):
         """
         Initializes values for a Voltage clamp.
 
-        techincally this is an SEClamp in neuron, which is a
+        Techincally this is an SEClamp in neuron, which is a
         three-stage current clamp.
         """
         stim = h.SEClamp(self.recording_section(0.5))
@@ -64,7 +182,7 @@ class NeuronSimulation(object):
         stim.amp3 = amp3
 
         self.Vstim = stim
-
+        
     def set_IClamp(self, delay=5, amp=0.1, dur=1000):
         """
         Initializes values for current clamp.
@@ -81,7 +199,7 @@ class NeuronSimulation(object):
         stim.dur = dur
         self.stim = stim
 
-    def show(self):
+    def show_simulation(self):
         from matplotlib import pyplot as plt
         if self.go_already:
             x = np.array(self.rec_t)
@@ -108,13 +226,14 @@ class NeuronSimulation(object):
         voltage = np.array(self.rec_v)
         return time, voltage
 
-    def go(self, sim_time=None):
+    def run_simulation(self,sim_time=None):
+
         self.set_recording()
         h.dt = self.dt
-        h.finitialize(h.E)
-        
-        h.finitialize(self.v_init)
+        h.finitialize(self.init_vm)
+
         neuron.init()
+
         if sim_time:
             neuron.run(sim_time)
         else:
@@ -139,120 +258,59 @@ class NeuronSimulation(object):
         Rin = np.abs(float(volt_diff / self.stim.amp))
         return Rin
 
-
-class SimulatorEnv(object):
-    """
-    Base class for simulator-specific environments which express
-    a model in simulator-specific types.
-    """
-
-    def __set_mechanism(sec, mech, mech_attribute, mech_value):
-        """
-        Insert NMODL ion channels
-        """
-        for seg in sec:
-            setattr(getattr(seg, mech), mech_attribute, mech_value)
-
-    def __init__(self):
-        self.segments_sections_dict={}
-        self.sections = []
-
-    def import_cell(self,cell):
-        raise(NotImplementedError)
-
-   
-class NeuronEnv(SimulatorEnv):
-    """
-    NEURON-simulator environment, loads NeuroML-specified
-    model into a NEURON-specific in-memory representation.
-    """
-
-    def __init__(self):
-        self.segments_sections_dict={}
-        self.sections = []
-
-    def import_cell(self,cell):
-        #experimental:
-        for index,seg in enumerate(cell.morphology):
-            section = h.Section()
-            section.diam=seg.proximal_diameter #fix
-            if seg.length > 0:
-                section.L=seg.length
-            else:
-                section.L=0.1 #temporary hack
-           
-#           h.pt3dadd(seg.proximal.x,
-#                     seg.proximal.y,
-#                     seg.proximal.z,
-#                     seg.proximal_diameter,
-#                     sec = section)
-            
-            self.segments_sections_dict[seg._index] = section
-            self.sections.append(section)
-
-        #connect them all together:
-        for i,seg in enumerate(cell.morphology):
-            section = self.segments_sections_dict[seg._index]
-            try:
-                parent_section = self.segments_sections_dict[seg.parent._index]
-                section.connect(parent_section)
-            except:
-                pass
-
-        #this is the component bit...
-        for component_segment_pair in cell.morphology._backend.observer.kinetic_components:
-            component = component_segment_pair[0]
-            segment_index = component_segment_pair[1]
-            neuron_section = self.segments_sections_dict[segment_index]
-            
-            if component.name == 'IClamp':
-               stim = h.IClamp(neuron_section(0.5))
-               stim.delay = component.delay
-               stim.amp = component.amp
-               stim.dur = component.dur
-               self.stim = stim
-
-            if component.name == 'NMODL':
-                print 'inserting ion channel:' + component.name
-                neuron_section.insert(component.name)
-                for attribute in component.attributes:
-                    self.__set_mechanism(neuron_section, 
-                                        attribute.name, 
-                                        attribute.value)
-                           
-    @property
-    def topology(self):
-        print('connected topology:')
-        print(h.topology())
-
-
 class MooseEnv(SimulatorEnv):
     """
     MOOSE-simulator environment
 
-    Loads NeuroML-specified model into a 
-    MOOSE-specific in-memory representation.
+    * Loads NeuroML-specified model into a 
+      MOOSE-specific in-memory representation.
+
+    * Provides methods to run a simulation based
+      on the model imported
     """
 
-    def __init__(self):
+    def __init__(self,sim_time=1,dt=1e-4):
+        self.sim_time = sim_time
+        self.dt=dt
+        
+    def import_cell(self,cell):
+        """
+        Import a cell from libNeuroML into MOOSE objects
+        """
+
         self.segments_compartments_dict={}
         self.compartments = []
 
-    def import_cell(self,cell):
-        model = moose.Neutral('/model') # This is a container for the model
+        try:
+            self.passive = True
+            self.em = cell.leak_current.em
+            self.init_vm = cell.passive_properties.init_vm
+            self.rm = cell.passive_properties.rm
+            self.cm = cell.passive_properties.cm
+            self.ra = cell.passive_properties.ra
+        except:
+            self.passive = False
+            
+        # This is a container for the model
+        model = moose.Neutral('/model') 
         
         print('Creating MOOSE compartments:')
         for index,seg in enumerate(cell.morphology):
             print(index)
-            compartment = moose.Compartment('/model/' + str(index))
-            #temporary, for testing purposes, this information
-            #will be extracted from the segments
-            compartment.Em = -65e-3 # Leak potential
-            compartment.initVm = -65e-3 # Initial membrane potential
-            compartment.Rm = 5e9 # Total membrane resistance of the compartment
-            compartment.Cm = 1e-12 # Total membrane capacitance of the compartment
-            compartment.Ra = 1e6 # Total axial resistance of the compartment
+            path = '/model/' + str(index)
 
+            if self.passive:
+                compartment = self._make_compartment(path,
+                                                     self.ra,
+                                                     self.rm,
+                                                     self.cm,
+                                                     self.em,
+                                                     seg.proximal_diameter,
+                                                     seg.length)
+                compartment.initVm = self.init_vm
+            else:
+                raise(NotImplementedError,"Currently not supporting non-passive cells")
+                
             self.segments_compartments_dict[seg._index] = compartment
             self.compartments.append(compartment)
         
@@ -275,34 +333,50 @@ class MooseEnv(SimulatorEnv):
             if component.name == 'IClamp':
                 print 'IClamp detected'
                 self.current_clamp = moose.PulseGen('/pulsegen')
-                self.current_clamp.delay[0] = component.delay # ms
-                self.current_clamp.width[0] = component.dur # ms
-                self.current_clamp.level[0] = component.amp*1e-12 #pA
-                moose.connect(self.current_clamp, 'outputOut', compartment, 'injectMsg')               
+                self.current_clamp.delay[0] = component.delay
+                self.current_clamp.delay[1] = 10 #temp hack
+                self.current_clamp.width[0] = component.dur
+                self.current_clamp.level[0] = component.amp
+                moose.connect(self.current_clamp, 'outputOut', compartment, 'injectMsg')
 
-class MooseSimulation(object):
+            elif component.name != 'IClamp':
+                raise(NotImplementedError)
+            
+    def _make_compartment(self,path, ra, rm, cm, em, diameter, length):
+        """
+        Uses compartment dimensions to set passive and leak properties
+        """
+        Ra = 4.0 * length * ra / ( math.pi * diameter * diameter )
+        Rm = rm / ( math.pi * diameter * length )
+        Cm = cm * math.pi * diameter * length
 
-    def __init__(self, environment, sim_time=1000):
-        self.recording_compartment = environment.compartments[0]
-        self.sim_time = sim_time
-        self.go_already = False
-        self.environment = environment
-
-    def go(self,simdt=1e-6):
-
-        current_clamp = self.environment.current_clamp
+        compartment = moose.Compartment(path)
+        compartment.Ra = Ra
+        compartment.Rm = Rm
+        compartment.Cm = Cm
+        compartment.Em = em
+        compartment.length = length
+        compartment.diameter = diameter
+        compartment.initVm = em
+        
+        return compartment
+            
+    def run_simulation(self):
 
         # Setup data recording
         data = moose.Neutral('/data')
         Vm = moose.Table('/data/Vm')
-        moose.connect(Vm, 'requestData', self.recording_compartment, 'get_Vm')
+        moose.connect(Vm, 'requestData', self.compartments[0], 'get_Vm')
 
         # Now schedule the sequence of operations and time resolutions
-        moose.setClock(0,simdt)
-        moose.setClock(1,simdt)
-        moose.setClock(2,simdt)
-        moose.setClock(3,simdt)
+        moose.setClock(0,self.dt)
+        moose.setClock(1,self.dt)
+        moose.setClock(2,self.dt)
+        moose.setClock(3,self.dt)
 
+        #quite a hack:
+        current_clamp = self.current_clamp
+        
         # useClock: First argument is clock no.
         # Second argument is a wildcard path matching all elements of type Compartment
         # Last argument is the processing function to be executed at each tick of clock 0 
@@ -322,7 +396,9 @@ class MooseSimulation(object):
         self.rec_v = Vm.vec
         self.t_final = clock.currentTime
 
-    def show(self):
+    def show_simulation(self):
         import pylab
-        pylab.plot(pylab.linspace(0, self.t_final, len(self.rec_v)), self.rec_v)
+        pylab.xlabel("Time in ms")
+        pylab.ylabel("Voltage in mV")
+        pylab.plot(pylab.linspace(0, self.t_final*1000, len(self.rec_v)), self.rec_v*1000)
         pylab.show()
