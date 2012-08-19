@@ -42,13 +42,6 @@ class SimulatorEnv(object):
 
     """
 
-    def __set_mechanism(sec, mech, mech_attribute, mech_value):
-        """
-        Insert NMODL ion channels
-        """
-        for seg in sec:
-            setattr(getattr(seg, mech), mech_attribute, mech_value)
-
     def __init__(self):
         self.segments_sections_dict={}
         self.sections = []
@@ -94,15 +87,11 @@ class NeuronEnv(SimulatorEnv):
 
             try:
                 self.passive = True
-                print("Setting NEURON passive properties")
                 section.cm = self.cm
                 section.Ra = self.ra
 
                 section.insert('pas')
                 for neuron_seg in section:
-                    print 'setting'
-                    print neuron_seg.pas.e
-                    print neuron_seg.pas.g
                     neuron_seg.pas.e = cell.leak_current.em
                     neuron_seg.pas.g = 1 / self.rm #I *think* this is right - is a 1e8 factor needed?
                 
@@ -131,7 +120,6 @@ class NeuronEnv(SimulatorEnv):
             try:
                 parent_section = self.segments_sections_dict[seg.parent._index]
                 section.connect(parent_section)
-                print("Connection made")
             except:
                 print("Connecting NEURON sections failure")
                 pass
@@ -141,26 +129,26 @@ class NeuronEnv(SimulatorEnv):
             component = component_segment_pair[0]
             segment_index = component_segment_pair[1]
             neuron_section = self.segments_sections_dict[segment_index]
-            
-            if component.name == 'IClamp':
-                print 'NEURON Current clamp detected'
+
+            #Here we will need to introduce another method, eventually will need
+            #to get a smarter way of doing this where the name of the component
+            #calls the method responsible for dealing with it
+            if component.type == 'IClamp':
                 stim = h.IClamp(neuron_section(0.5))
                 stim.delay = component.delay
                 stim.amp = component.amp*1e4
                 stim.dur = component.dur
-                print 'values are:'
-                print stim.delay
-                print stim.amp
-                print stim.dur
                 self.stim = stim
 
-            if component.name == 'NMODL':
-                print 'inserting ion channel:' + component.name
+            if component.type == 'NMODL':
+                print 'Inserting ion channel:' + component.name
                 neuron_section.insert(component.name)
-                for attribute in component.attributes:
-                    self.__set_mechanism(neuron_section, 
-                                        attribute.name, 
-                                        attribute.value)
+
+                for attribute in component.attribute_values:
+                    self.__set_mechanism(neuron_section,
+                                         component.name,
+                                         attribute, 
+                                         component.attribute_values[attribute])
                            
     @property
     def topology(self):
@@ -261,6 +249,13 @@ class NeuronEnv(SimulatorEnv):
         Rin = np.abs(float(volt_diff / self.stim.amp))
         return Rin
 
+    def __set_mechanism(self,neuron_section, mech, mech_attribute, mech_value):
+        """
+        Insert NMODL ion channels
+        """
+        for seg in neuron_section:
+            setattr(getattr(seg, mech), mech_attribute, mech_value)
+
 class MooseEnv(SimulatorEnv):
     """
     MOOSE-simulator environment
@@ -301,7 +296,6 @@ class MooseEnv(SimulatorEnv):
         
         print('Creating MOOSE compartments:')
         for index,seg in enumerate(cell.morphology):
-            print(index)
             path = '/model/' + str(index)
 
             if self.passive:
@@ -319,9 +313,7 @@ class MooseEnv(SimulatorEnv):
             self.segments_compartments_dict[seg._index] = compartment
             self.compartments.append(compartment)
         
-        print('Connecting MOOSE compartments:')
         for i,seg in enumerate(cell.morphology):
-            print i
             compartment = self.segments_compartments_dict[seg._index]
             try:
                 parent_compartment = self.segments_compartments_dict[seg.parent._index]
@@ -334,10 +326,8 @@ class MooseEnv(SimulatorEnv):
             component = component_segment_pair[0]
             segment_index = component_segment_pair[1]
             compartment = self.segments_compartments_dict[segment_index]
-            print "component name:"
-            print component.name
-            if component.name == 'IClamp':
-                print 'IClamp detected'
+
+            if component.type == 'IClamp':
                 self.current_clamp = moose.PulseGen('/pulsegen')
                 self.current_clamp.delay[0] = component.delay
                 self.current_clamp.delay[1] = 1e15 #Ensures first pulse won't repeat
@@ -345,8 +335,7 @@ class MooseEnv(SimulatorEnv):
                 self.current_clamp.level[0] = component.amp
                 moose.connect(self.current_clamp, 'outputOut', compartment, 'injectMsg')
 
-            if component.name == 'HHChannel':
-                print("Hodgkin Huxley channel detected")
+            if component.type == 'HHChannel':
                 self._insert_hh_channel(component,compartment)
                 
     def _insert_hh_channel(self,component,compartment):
