@@ -64,22 +64,20 @@ class NeuronEnv(SimulatorEnv):
     """
 
     def __init__(self,sim_time=1,dt=1e-4):
-        self.sim_time = sim_time*10**3
-        self.dt=dt*10**3
+        self.sim_time = sim_time
+        self.dt = dt # 1e3Factor needed here because of NEURON units
 
     def import_cell(self,cell):
 
-#        print("In the NEURON ENV cell importing routine")
-        
         self.segments_sections_dict={}
         self.sections = []
 
         try:
             self.passive = True
             self.em = cell.leak_current.em
-            self.init_vm = cell.passive_properties.init_vm * 1000
-            self.rm = cell.passive_properties.rm
-            self.cm = cell.passive_properties.cm
+            self.init_vm = cell.passive_properties.init_vm
+            self.rm = cell.passive_properties.rm *1e2 #UNIT conversion factor, these all need to be checked
+            self.cm = cell.passive_properties.cm *1e1 #UNIT conversion factor, these all need to be checked
             self.ra = cell.passive_properties.ra
         except:
             self.passive = False
@@ -93,20 +91,20 @@ class NeuronEnv(SimulatorEnv):
                 section.L=seg.length
             else:
                 section.L=0.1
-           
+
             try:
                 self.passive = True
                 print("Setting NEURON passive properties")
-                section.cm = cell.passive_properties.cm * 10e13 #conversions from SI to NEURON-compatibe(check)
-                section.Ra = cell.passive_properties.ra * 1e-8 #conversions from SI to NEURON-compatibe(check)
+                section.cm = self.cm
+                section.Ra = self.ra
 
                 section.insert('pas')
                 for neuron_seg in section:
                     print 'setting'
                     print neuron_seg.pas.e
                     print neuron_seg.pas.g
-                    neuron_seg.pas.e = cell.leak_current.em * 1e3 # convert to mV
-                    neuron_seg.pas.g = 1 / cell.passive_properties.rm * 1e8 #I *think* this is right
+                    neuron_seg.pas.e = cell.leak_current.em
+                    neuron_seg.pas.g = 1 / self.rm #I *think* this is right - is a 1e8 factor needed?
                 
             except:
                 print("Setting passive properties failed")
@@ -145,11 +143,16 @@ class NeuronEnv(SimulatorEnv):
             neuron_section = self.segments_sections_dict[segment_index]
             
             if component.name == 'IClamp':
-               stim = h.IClamp(neuron_section(0.5))
-               stim.delay = component.delay*1000 #convert to ms
-               stim.amp = component.amp*1e9 #convert to nA
-               stim.dur = component.dur *1000 #convert to ms
-               self.stim = stim
+                print 'NEURON Current clamp detected'
+                stim = h.IClamp(neuron_section(0.5))
+                stim.delay = component.delay
+                stim.amp = component.amp*1e4
+                stim.dur = component.dur
+                print 'values are:'
+                print stim.delay
+                print stim.amp
+                print stim.dur
+                self.stim = stim
 
             if component.name == 'NMODL':
                 print 'inserting ion channel:' + component.name
@@ -280,14 +283,16 @@ class MooseEnv(SimulatorEnv):
 
         self.segments_compartments_dict={}
         self.compartments = []
+        self.channels = []
 
         try:
+            cm_factor = 1e-8
             self.passive = True
             self.em = cell.leak_current.em
             self.init_vm = cell.passive_properties.init_vm
-            self.rm = cell.passive_properties.rm
-            self.cm = cell.passive_properties.cm
-            self.ra = cell.passive_properties.ra
+            self.rm = cell.passive_properties.rm / cm_factor
+            self.cm = cell.passive_properties.cm * cm_factor
+            self.ra = cell.passive_properties.ra * cm_factor #may need to check this is definitely correct
         except:
             self.passive = False
             
@@ -329,19 +334,64 @@ class MooseEnv(SimulatorEnv):
             component = component_segment_pair[0]
             segment_index = component_segment_pair[1]
             compartment = self.segments_compartments_dict[segment_index]
-            
+            print "component name:"
+            print component.name
             if component.name == 'IClamp':
                 print 'IClamp detected'
                 self.current_clamp = moose.PulseGen('/pulsegen')
                 self.current_clamp.delay[0] = component.delay
-                self.current_clamp.delay[1] = 10 #temp hack
+                self.current_clamp.delay[1] = 1e15 #Ensures first pulse won't repeat
                 self.current_clamp.width[0] = component.dur
                 self.current_clamp.level[0] = component.amp
                 moose.connect(self.current_clamp, 'outputOut', compartment, 'injectMsg')
 
-            elif component.name != 'IClamp':
-                raise(NotImplementedError)
-            
+            if component.name == 'HHChannel':
+                print("Hodgkin Huxley channel detected")
+                self._insert_hh_channel(component,compartment)
+                
+    def _insert_hh_channel(self,component,compartment):
+
+        import moosecomponents as mc
+
+        channel = mc.IonChannel(component.channel_name,
+                                compartment,
+                                component.specific_gbar,
+                                component.e_rev,
+                                Xpower=component.x_power,
+                                Ypower=component.y_power,
+                                Zpower=component.z_power)
+
+        #setup the alphas and the betas
+        try:
+            channel.setupAlpha('X',
+                               component.x_gate.params,
+                               component.x_gate.vdivs,
+                               component.x_gate.vmin,
+                               component.x_gate.vmax)
+        except:
+            print 'No X Gate'
+
+        try:
+            channel.setupAlpha('Y',
+                               component.y_gate.params,
+                               component.y_gate.vdivs,
+                               component.y_gate.vmin,
+                               component.y_gate.vmax)
+        except:
+            print 'No Y Gate'
+
+        try:
+            channel.setupAlpha('Z',
+                               component.z_gate.params,
+                               component.z_gate.vdivs,
+                               component.z_gate.vmin,
+                               component.z_gate.vmax)
+        except:
+            print 'No Z Gate'
+
+        #need to do this for all channels:    
+        self.channels.append(channel)
+
     def _make_compartment(self,path, ra, rm, cm, em, diameter, length):
         """
         Uses compartment dimensions to set passive and leak properties
@@ -373,6 +423,7 @@ class MooseEnv(SimulatorEnv):
         moose.setClock(1,self.dt)
         moose.setClock(2,self.dt)
         moose.setClock(3,self.dt)
+        moose.setClock(4,self.dt)
 
         #quite a hack:
         current_clamp = self.current_clamp
@@ -384,7 +435,8 @@ class MooseEnv(SimulatorEnv):
         moose.useClock(1, '/model/#[TYPE=Compartment]', 'process')
         moose.useClock(2, Vm.path, 'process')
         moose.useClock(3, current_clamp.path, 'process')
-
+        moose.useClock(4, '/model/#/#[TYPE=HHChannel]', 'process')
+    
         # Now initialize everything and get set
         moose.reinit()
         moose.start(self.sim_time)
@@ -400,5 +452,5 @@ class MooseEnv(SimulatorEnv):
         import pylab
         pylab.xlabel("Time in ms")
         pylab.ylabel("Voltage in mV")
-        pylab.plot(pylab.linspace(0, self.t_final*1000, len(self.rec_v)), self.rec_v*1000)
+        pylab.plot(pylab.linspace(0, self.t_final, len(self.rec_v)), self.rec_v)
         pylab.show()
