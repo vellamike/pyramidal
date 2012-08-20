@@ -14,14 +14,12 @@
 """
 """
 
-import neuron
 import numpy as np
 import neuroml.loaders as loaders
 import os
 import math
 
 #import simulator libraries:
-from neuron import h
 import moose
 
 
@@ -43,6 +41,7 @@ class SimulatorEnv(object):
     """
 
     def __init__(self):
+
         self.segments_sections_dict={}
         self.sections = []
 
@@ -55,8 +54,9 @@ class NeuronEnv(SimulatorEnv):
     NEURON-simulator environment, loads NeuroML-specified
     model into a NEURON-specific in-memory representation.
     """
-
+   
     def __init__(self,sim_time=1,dt=1e-4):
+
         self.sim_time = sim_time
         self.dt = dt # 1e3Factor needed here because of NEURON units
 
@@ -64,7 +64,14 @@ class NeuronEnv(SimulatorEnv):
 
         self.segments_sections_dict={}
         self.sections = []
+        self.cell = cell
+        
+        #this is a clumsy but necessary step:
+        self._precompile_mod_files()
 
+        import neuron
+        self.neuron = neuron
+        
         try:
             self.passive = True
             self.em = cell.leak_current.em
@@ -76,7 +83,7 @@ class NeuronEnv(SimulatorEnv):
             self.passive = False
 
         for index,seg in enumerate(cell.morphology):
-            section = h.Section()
+            section = self.neuron.h.Section()
             section.diam=seg.proximal_diameter #fix
 
              #temporary hack:
@@ -134,7 +141,7 @@ class NeuronEnv(SimulatorEnv):
             #to get a smarter way of doing this where the name of the component
             #calls the method responsible for dealing with it
             if component.type == 'IClamp':
-                stim = h.IClamp(neuron_section(0.5))
+                stim = self.neuron.h.IClamp(neuron_section(0.5))
                 stim.delay = component.delay
                 stim.amp = component.amp*1e4
                 stim.dur = component.dur
@@ -155,31 +162,31 @@ class NeuronEnv(SimulatorEnv):
 
     def _nmodl_compile(self):
         import subprocess
-        import threading
-        import time
 
-        def target():
-            process = subprocess.Popen("nrnivmodl", shell=True)
-            process.communicate()
-
-        thread = threading.Thread(target=target)
-        thread.start()
-        time.sleep(5)
+        subprocess.check_call("nrnivmodl")
         
-    def _insert_hh_channel(self,hh_channel,neuron_section):
+    def _precompile_mod_files(self):
+        """
+        loop through all components
+        """
 
-        import neuronutils
+        import neuronutils        
+        for component_segment_pair in self.cell.morphology._backend.observer.kinetic_components:
+            component = component_segment_pair[0]
+            if component.type == 'HHChannel':
+                writer = neuronutils.HHNMODLWriter(component)
+                writer.write()
 
-        writer = neuronutils.HHNMODLWriter(hh_channel)
-        writer.write()
+        #compile the mod files:
         self._nmodl_compile()
-        from neuron import h
-        neuron_section.insert(hh_channel.channel_name)
+         
+    def _insert_hh_channel(self,hh_channel,neuron_section):
+       neuron_section.insert(hh_channel.channel_name)
         
     @property
     def topology(self):
         print('connected topology:')
-        print(h.topology())
+        print(self.neuron.h.topology())
 
     def set_VClamp(self,dur1=100,amp1=0,dur2=0,amp2=0,dur3=0,amp3=0,):
         """
@@ -188,7 +195,7 @@ class NeuronEnv(SimulatorEnv):
         Techincally this is an SEClamp in neuron, which is a
         three-stage current clamp.
         """
-        stim = h.SEClamp(self.recording_section(0.5))
+        stim = self.neuron.h.SEClamp(self.recording_section(0.5))
         
         stim.rs=0.1
         stim.dur1 = dur1
@@ -210,7 +217,7 @@ class NeuronEnv(SimulatorEnv):
           amp   = 0.1 [nA]
           dur   = 1000 [ms]
         """
-        stim = h.IClamp(self.recording_section(0.5))
+        stim = self.neuron.h.IClamp(self.recording_section(0.5))
         stim.delay = delay
         stim.amp = amp
         stim.dur = dur
@@ -232,10 +239,10 @@ class NeuronEnv(SimulatorEnv):
     
     def set_recording(self):
         # Record Time
-        self.rec_t = h.Vector()
-        self.rec_t.record(h._ref_t)
+        self.rec_t = self.neuron.h.Vector()
+        self.rec_t.record(self.neuron.h._ref_t)
         # Record Voltage
-        self.rec_v = h.Vector()
+        self.rec_v = self.neuron.h.Vector()
         self.rec_v.record(self.recording_section(0.5)._ref_v)
 
     def get_recording(self):
@@ -246,15 +253,15 @@ class NeuronEnv(SimulatorEnv):
     def run_simulation(self,sim_time=None):
 
         self.set_recording()
-        h.dt = self.dt
-        h.finitialize(self.init_vm)
+        self.neuron.h.dt = self.dt
+        self.neuron.h.finitialize(self.init_vm)
 
-        neuron.init()
+        self.neuron.init()
 
         if sim_time:
-            neuron.run(sim_time)
+            self.neuron.run(sim_time)
         else:
-            neuron.run(self.sim_time)
+            self.neuron.run(self.sim_time)
         self.go_already = True
 
     def get_tau_eff(self, ip_flag=False, ip_resol=0.01):
