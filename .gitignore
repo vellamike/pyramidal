@@ -3,5 +3,6 @@
 .pydevproject
 *.egg-info
 build
+x86_64
 *~
 *#
