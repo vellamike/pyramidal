@@ -11,8 +11,10 @@ import neuroml.morphology as ml
 import neuroml.kinetics as kinetics
 import neuroml.loaders as loaders
 import pyramidal.environments as envs
+from pyramidal import neuronutils
 import numpy as np
 from matplotlib import pyplot as plt
+from subprocess import call
 
 #build some compartments:
 compartment = ml.Segment(length=500,proximal_diameter=500,distal_diameter=500)
@@ -42,15 +44,17 @@ stim = kinetics.IClamp(current=0.1,delay=5.0,duration=40.0)
 morphology[0].insert(stim)
 
 #create Na ion channel:
-na_channel = kinetics.HHChannel(name = 'Na',
+na_channel = kinetics.HHChannel(name = 'na',
                                 specific_gbar = 120.0,
+                                ion = 'na',
                                 e_rev = 115.0, #115 for squid
                                 x_power = 3.0,
                                 y_power = 1.0)
 
 #create K ion channel:
-k_channel = kinetics.HHChannel(name = 'K',
+k_channel = kinetics.HHChannel(name = 'kv',
                                specific_gbar = 36.0, #36.0 specific Gna in squid model
+                               ion = 'k',
                                e_rev = -12.0, #calculated from squid demo in moose -e-3 factor removed
                                x_power = 4.0,
                                y_power = 0.0)
@@ -127,13 +131,14 @@ moose_env.run_simulation()
 #create the NEURON environment
 neuron_env = envs.NeuronEnv(sim_time=100,dt=1e-2)
 
-sodium_attributes = {'gbar':120e2}
-na = kinetics.Nmodl('na',sodium_attributes)
-potassium_attributes = {'gbar':36e2}
-kv = kinetics.Nmodl('kv',potassium_attributes)
+#now should be able to autogenerate these really:
+#sodium_attributes = {'gbar':120e2}
+#na = kinetics.Nmodl('na',sodium_attributes)
+#potassium_attributes = {'gbar':36e2}
+#kv = kinetics.Nmodl('kv',potassium_attributes)
 
-morphology[0].insert(na)
-morphology[0].insert(kv)
+#morphology[0].insert(na)
+#morphology[0].insert(kv)
 
 #import morphology into environment:
 neuron_env.import_cell(morphology)
