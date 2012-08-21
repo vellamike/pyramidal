@@ -225,7 +225,7 @@ This is because the morph object still refers to the loaded morphology, these ob
 Example 4 - working with mod files
 ----------------------------------
 
-It is still possible to use mod files as long as you are working only with the NEURON environment. As with NEURON and PYTHON, the mod files need to be in the top-level directory where your simulation script is located. The first thing you need to do is run the nrnivmodl command:
+It is still possible to use mod files as long as you are working only with the NEURON environment. As with the Python library for NEURON, the mod files need to be in the top-level directory where your simulation script is located. The first thing you need to do is run the nrnivmodl command:
 
 .. code-block::
 
@@ -245,7 +245,4 @@ channels are then inserted in the usual way:
     morphology[0].insert(kv)
     morphology[0].insert(na)
 
-It should be noted that pyramidal uses this, along with code-generation of mod files, to create channels from componetns such as HHChannel objects.
-
-
-
+It should be noted that pyramidal uses this, along with code-generation of mod files, to create channels from componetns such as HHChannel objects. A planned future update is to automate the mod file compilation stage.

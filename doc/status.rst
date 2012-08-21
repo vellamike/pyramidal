@@ -1,5 +1,5 @@
-Project Status
-==============
+Project Status (as of 21/8/12)
+=============================
 
 libNeuroML
 ----------
@@ -16,13 +16,12 @@ NEURON environment
 ------------------
 
     *Inserting kinetic components (IClamp, VClamp etc..) into segments - 50%
-    *Inserting ion channels into segments - 50%
+    *Inserting ion channels into segments - 100%
     *NEURON internal representation of morphology - 100%
 
 MOOSE environment
 -----------------
 
-    *Inserting kinetic components (IClamp, VClamp etc..) into segments - 25%
-    *Inserting ion channels into segments - 0%
-    *NEURON internal representation of morphology - 50%
-
+    *Inserting kinetic components (IClamp, VClamp etc..) into segments - 50%
+    *Inserting ion channels into segments - 100%
+    *NEURON internal representation of morphology - 75%
