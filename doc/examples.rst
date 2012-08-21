@@ -222,8 +222,30 @@ In order to get the new morphology the following needs to be done:
 This is because the morph object still refers to the loaded morphology, these objects are not automatically updated with new segments when an attach method is run but always refer to the segments which they contained at initialization.
 
 
-Example 4 - working with MOD files
+Example 4 - working with mod files
 ----------------------------------
 
-It is still possible to use mod files
+It is still possible to use mod files as long as you are working only with the NEURON environment. As with NEURON and PYTHON, the mod files need to be in the top-level directory where your simulation script is located. The first thing you need to do is run the nrnivmodl command:
+
+.. code-block::
+
+    $nrnivmodl
+
+Assuming the above has been done, a channel object is made, and all settable attributes (such as gbar) are modified from their default value as follows:
+
+.. code-block:: python
+    
+    kv_attributes = {'gbar':10000}
+    kv = kinetics.Nmodl('kv',kv_attributes)
+
+channels are then inserted in the usual way:
+
+.. code-block:: python
+
+    morphology[0].insert(kv)
+    morphology[0].insert(na)
+
+It should be noted that pyramidal uses this, along with code-generation of mod files, to create channels from componetns such as HHChannel objects.
+
+
 
