@@ -25,9 +25,66 @@ The syntax for making a compartment is intuitive:
                              proximal_diameter=500,
                              distal_diameter=500)
 
+The PassiveProperties and LeakCurrent objects are created, which we will then associate with our compartment.
 
+.. code-block:: python
 
-Assuming the example runs correctly, you should get a plot looking like this:
+   #Create a PassiveProperties object:
+   passive = kinetics.PassiveProperties(init_vm=-0.0,
+                                        rm=1/0.3,
+                                        cm=1.0,
+                                        ra=0.03)
+   
+   #Create a LeakCurrent object:
+   leak = kinetics.LeakCurrent(em=10.0)
+
+The morphology of a compartment is an object with all the other compartments connected to it. So for instance, if I had a compartment 'iseg' which was part of a much larger morphology including an axon and a whole cell, iseg.morphology would be the whole morphology. We need this object to pass to our simulators later on. Additionally, as shown here, the passive properties and leak current are passed to a whole morphology. It is currently not possible to set these per compartment (though this feature can be introduced if there is demand for it).
+
+.. code-block:: python
+
+    #Get the Morphology object which the compartment is part of:
+    morph = compartment.morphology
+
+    #insert the passive properties and leak current into the morphology:
+    morph.passive_properties = passive
+    morph.leak_current = leak
+
+We now use the neuroml kinetics module to create a current clamp stimulus. Otherwise the simulation would be a very boring one indeed. We insert the stimulus into the morphology, note that unlike with the passive and leak currents which were inserted into the morphology as a whole, the current clamp, being a point current, is inserted into a segment,hence the morph[0] statement - this means the first segment in the morphology (in our case slightly irrelevant  as the morphology only contains one segment anyway)
+
+.. code-block:: python
+    #create a current clamp stimulus:
+    stim = kinetics.IClamp(current=0.1,
+                           delay=5.0,
+                           duration=40.0)
+    
+    morph[0].insert(stim)
+
+All that now remains is to create the MOOSE and NEURON environments and run the simulations, the syntax is the same for both environments. Here's MOOSE:
+
+.. code-block:: python
+    #Create the MOOSE environmet:
+    moose_env = envs.MooseEnv(sim_time=100,
+                              dt=1e-2)
+    
+    #import morphology into environment:
+    moose_env.import_cell(morph)
+    
+    #Run the MOOSE simulation:
+    moose_env.run_simulation()
+
+And NEURON:
+
+.. code-block:: python
+    #create the NEURON environment
+    neuron_env = envs.NeuronEnv(sim_time=100,dt=1e-2)
+    
+    #import morphology into environment:
+    neuron_env.import_cell(morph)
+    
+    #run the NEURON simulation
+    neuron_env.run_simulation()
+
+The final part of the example simply runs some plotting routines to visualise the result of our simulation. Assuming the example runs correctly, you should get a plot looking like this:
 
 .. figure:: /figs/example1.png
    :scale: 100 %

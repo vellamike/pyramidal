@@ -43,7 +43,8 @@ morph[0].insert(stim)
 #We're now ready to run some simulations of a neuron with a leak current:
 
 #Create the MOOSE environmet:
-moose_env = envs.MooseEnv(sim_time=100,dt=1e-2)
+moose_env = envs.MooseEnv(sim_time=100,
+                          dt=1e-2)
 
 #import morphology into environment:
 moose_env.import_cell(morph)
