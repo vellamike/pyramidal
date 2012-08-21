@@ -171,14 +171,18 @@ class NeuronEnv(SimulatorEnv):
         """
 
         import neuronutils        
+
+        mod_files_exist = False
         for component_segment_pair in self.cell.morphology._backend.observer.kinetic_components:
             component = component_segment_pair[0]
             if component.type == 'HHChannel':
                 writer = neuronutils.HHNMODLWriter(component)
                 writer.write()
-
+                mod_files_exist = True
+                
         #compile the mod files:
-        self._nmodl_compile()
+        if mod_files_exist:
+            self._nmodl_compile()
          
     def _insert_hh_channel(self,hh_channel,neuron_section):
        neuron_section.insert(hh_channel.channel_name)

@@ -1,47 +1,88 @@
 """
-Same as example 1 but now lets use neuronvisio
+Simulation of passive properties in NEURON and MOOSE
 """
+
 import neuroml.morphology as ml
 import neuroml.kinetics as kinetics
-import neuroml.loaders as loaders
 import pyramidal.environments as envs
+from matplotlib import pyplot as plt
+import numpy as np
 
-from neuronvisio.controls import Controls
-controls = Controls()   # starting the GUI
+#First build a compartment:
+compartment = ml.Segment(length=500,proximal_diameter=500,distal_diameter=500)
 
-iseg=ml.Segment(length=10,proximal_diameter=1,distal_diameter=2)
-myelin1=ml.Segment(length=100,proximal_diameter=3,distal_diameter=4)
-node1=ml.Segment(length=10,proximal_diameter=5,distal_diameter=6)
-myelin2=ml.Segment(length=100,proximal_diameter=7,distal_diameter=8)
-node2=ml.Segment(length=10.0,proximal_diameter=9,distal_diameter=10)
+#Create a PassiveProperties object:
+passive = kinetics.PassiveProperties(init_vm=-0.0,
+                                     rm=1/0.3,
+                                     cm=1.0,
+                                     ra=0.03)
 
-iseg.attach(myelin1)
-myelin1.attach(node1)
-node1.attach(myelin2)
-myelin2.attach(node2)
+#Get the Morphology object which the compartment is part of:
+morph = compartment.morphology
 
-#doc = loaders.NeuroMLLoader.load_neuroml('/home/mike/dev/libNeuroML/testFiles/NML2_FullCell.nml')
-#doc = loaders.NeuroMLLoader.load_neuroml('/home/mike/dev/libNeuroML/testFiles/Purk2M9s.nml')
-#cell = doc.cells[0]
-#morph = cell.morphology
+#Create a LeakCurrent object:
+leak = kinetics.LeakCurrent(em=10.0)
 
-#morph[0].attach(iseg) #attach to the root
+#insert the passive properties and leak current into the morphology:
+morph.passive_properties = passive
+morph.leak_current = leak
 
-#new_morphology=morph.morphology
+#create a current clamp stimulus:
+stim = kinetics.IClamp(current=0.1,
+                       delay=5.0,
+                       duration=40.0)
 
-#insert a current clamp:
-#new_morphology[3].insert(kinetics.IClamp(0.1,200,100))
+#insert the stimulus into the morphology:
+morph[0].insert(stim)
 
-#env = envs.NeuronEnv()
+#We're now ready to run some simulations of a neuron with a leak current:
 
-#env.import_cell(new_morphology)
-#
+#Create the MOOSE environmet:
+moose_env = envs.MooseEnv(sim_time=100,dt=1e-2)
 
+#import morphology into environment:
+moose_env.import_cell(morph)
 
-#sim = envs.NeuronSimulation(env.sections[0])
-#print 'topology:'
-#print env.topology
-#sim.go()
-#sim.show()
+#Run the MOOSE simulation:
+moose_env.run_simulation()
 
+#plot simulation results:
+#moose_env.show_simulation()
 
+#create the NEURON environment
+neuron_env = envs.NeuronEnv(sim_time=100,dt=1e-2)
+
+#now should be able to autogenerate these really:
+#sodium_attributes = {'gbar':120e2}
+#na = kinetics.Nmodl('na',sodium_attributes)
+#potassium_attributes = {'gbar':36e2}
+#kv = kinetics.Nmodl('kv',potassium_attributes)
+
+#morphology[0].insert(na)
+#morphology[0].insert(kv)
+
+#import morphology into environment:
+neuron_env.import_cell(morph)
+
+#run the NEURON simulation
+print 'About to run simulation'
+neuron_env.run_simulation()
+
+#plot simulation results:
+#neuron_env.show_simulation()
+
+neuron_voltage = neuron_env.rec_v
+neuron_time_vector  = neuron_env.rec_t
+
+moose_voltage = moose_env.rec_v
+moose_time_vector  = np.linspace(0, moose_env.t_final, len(moose_env.rec_v))
+
+#Plotting results:
+moose_plot, = plt.plot(moose_time_vector,moose_voltage)
+neuron_plot, = plt.plot(neuron_time_vector,neuron_voltage)
+plt.xlabel("Time in ms")
+plt.ylabel("Voltage in mV")
+plt.legend([moose_plot,neuron_plot],["MOOSE","NEURON"])
+plt.show()
+
+print neuron_env.topology

@@ -4,6 +4,10 @@ Examples
 Example 1 - Passive properties
 ------------------------------
 
+.. figure:: /figs/example1.png
+   :scale: 50 %
+   :alt: alt..
+
 Example 2 - Hodgkin Huxley single compartmental simulations
 -----------------------------------------------------------
 

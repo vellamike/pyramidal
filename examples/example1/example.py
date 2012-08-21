@@ -3,44 +3,40 @@ Simple use case of libNeuroML + Pyramidal
 
 A simple, single-compartmental neuron is created using libNeuroML
 and a simple simulation is run in both NEURON and MOOSE
-
-NOTE: As a default, for now we're going to expect SI units
 """
 
 import neuroml.morphology as ml
 import neuroml.kinetics as kinetics
-import neuroml.loaders as loaders
 import pyramidal.environments as envs
-from pyramidal import neuronutils
-import numpy as np
 from matplotlib import pyplot as plt
-from subprocess import call
+import numpy as np
 
-#build some compartments:
+#First build a compartment:
 compartment = ml.Segment(length=500,proximal_diameter=500,distal_diameter=500)
-#compartment_2 = ml.Segment(length=500,proximal_diameter=500,distal_diameter=500)
-#compartment.attach(compartment_2)
 
-#get the morphology:
+#Create a PassiveProperties object:
+passive = kinetics.PassiveProperties(init_vm=-0.0,
+                                     rm=1/0.3,
+                                     cm=1.0,
+                                     ra=0.03)
+
+#Create a LeakCurrent object:
+leak = kinetics.LeakCurrent(em=10.0)
+
+
+#get a Morphology object from the compartment:
 morphology = compartment.morphology
 
-#create passive properties container
-passive = kinetics.PassiveProperties(init_vm=-0.0,#squid
-                                     rm=1/0.3,#squid
-                                     cm=1.0,#squid
-                                     ra=0.03) #squid -this actually needs xarea
-
-#create a leak current:
-leak = kinetics.LeakCurrent(em=10.613) #10.613
-
-#insert passive properties and leak current into the morphology:
+#insert the passive properties and leak current into the morphology:
 morphology.passive_properties = passive
 morphology.leak_current = leak
 
 #create a current clamp stimulus:
-stim = kinetics.IClamp(current=0.1,delay=5.0,duration=40.0)
+stim = kinetics.IClamp(current=0.1,
+                       delay=5.0,
+                       duration=40.0)
 
-#insert the stimulus:
+#insert the stimulus into the morphology
 morphology[0].insert(stim)
 
 #create Na ion channel:
