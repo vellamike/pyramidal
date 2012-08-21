@@ -6,7 +6,7 @@ Example 1 - Passive properties
 This example serves as an introduction to pyramidal usage
 
 .. figure:: /figs/example1.png
-   :scale: 50 %
+   :scale: 20 %
    :alt: alt..
 
 Example 2 - Hodgkin Huxley single compartmental simulations
