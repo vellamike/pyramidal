@@ -14,9 +14,8 @@ Contents:
    
    what_it_does  
    install
-   scope
-   status
    examples
+   status
 
 Source documentation
 ==================
