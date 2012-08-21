@@ -4,4 +4,6 @@ pyramidal
 .. toctree::
    :maxdepth: 4
 
-   pyramidal
+   environments
+   moosecomponents
+   neuronutils
