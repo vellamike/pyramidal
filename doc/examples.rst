@@ -54,6 +54,7 @@ The morphology of a compartment is an object with all the other compartments con
 We now use the neuroml kinetics module to create a current clamp stimulus. Otherwise the simulation would be a very boring one indeed. We insert the stimulus into the morphology, note that unlike with the passive and leak currents which were inserted into the morphology as a whole, the current clamp, being a point current, is inserted into a segment,hence the morph[0] statement - this means the first segment in the morphology (in our case slightly irrelevant  as the morphology only contains one segment anyway)
 
 .. code-block:: python
+
     #create a current clamp stimulus:
     stim = kinetics.IClamp(current=0.1,
                            delay=5.0,
