@@ -228,7 +228,7 @@ Example 4 - Working with mod files
 
 It is still possible to use mod files as long as you are working only with the NEURON environment. As with the Python library for NEURON, the mod files need to be in the top-level directory where your simulation script is located. The first thing you need to do is run the nrnivmodl command:
 
-.. code-block::
+.. code-block:: shell
 
     $nrnivmodl
 
