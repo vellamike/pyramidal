@@ -93,7 +93,7 @@ The final part of the example simply runs some plotting routines to visualise th
 
 .. figure:: /figs/example1.png
    :scale: 100 %
-   :alt: passive simulation
+   :alt: passive_simulation
 
 As can be seen, the result of this passive, single-compartment similation are so similar in NEURON and MOOSE that it is almost impossible to tell there is more than one plot.
 
@@ -165,7 +165,7 @@ The MOOSE and NEURON environments are created and morphology imported just as be
 
 .. figure:: /figs/example2.png
    :scale: 100 %
-   :alt: passive simulation
+   :alt: hodgkin_huxely_simulation
 
 Example 3 -
 ---------
