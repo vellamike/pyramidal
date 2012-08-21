@@ -14,6 +14,7 @@ Contents:
    
    what_it_does  
    install
+   note_on_units   
    examples
    status
 
