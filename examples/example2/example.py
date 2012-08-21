@@ -1,67 +1,163 @@
+"""
+Simple use case of libNeuroML + Pyramidal
+
+A simple, single-compartmental neuron is created using libNeuroML
+and a simple simulation is run in both NEURON and MOOSE
+"""
+
 import neuroml.morphology as ml
 import neuroml.kinetics as kinetics
-import neuroml.loaders as loaders
 import pyramidal.environments as envs
-from neuron import h
+from matplotlib import pyplot as plt
+import numpy as np
 
-print('Building axon:')
-#Create an axon:
-iseg=ml.Segment(length=10,proximal_diameter=1,distal_diameter=2)
-myelin1=ml.Segment(length=100,proximal_diameter=3,distal_diameter=4)
-node1=ml.Segment(length=10,proximal_diameter=5,distal_diameter=6)
-myelin2=ml.Segment(length=100,proximal_diameter=7,distal_diameter=8)
-node2=ml.Segment(length=10.0,proximal_diameter=9,distal_diameter=10)
-iseg.attach(myelin1)
-myelin1.attach(node1)
-node1.attach(myelin2)
-myelin2.attach(node2)
+#First build a compartment:
+compartment = ml.Segment(length=500,proximal_diameter=500,distal_diameter=500)
 
-#load a cell, note, at the moment the index of each 
-#loaded compartment is printed for diagnosis because 
-#this operation is hanging for unkown reason.
-print('Loading cell:')
-doc = loaders.NeuroMLLoader.load_neuroml('/home/mike/dev/libNeuroML/testFiles/Purk2M9s.nml')
-cell = doc.cells[0]
-morph = cell.morphology
+#Create a PassiveProperties object:
+passive = kinetics.PassiveProperties(init_vm=-0.0,
+                                     rm=1/0.3,
+                                     cm=1.0,
+                                     ra=0.03)
 
-#attach iseg to the soma of loaded cell:
-print('Attaching axon to loaded cell:')
-morph[0].attach(iseg)
+#Create a LeakCurrent object:
+leak = kinetics.LeakCurrent(em=10.0)
 
-#obtain the new morphology object:
-new_morphology=morph.morphology
 
-print('Inserting current clamp:')
-#create the current clamp stimulus:
-stim = kinetics.IClamp(0.1,300,100)
+#get a Morphology object from the compartment:
+morphology = compartment.morphology
 
-#insert the stimulus:
-new_morphology[0].insert(stim)
+#insert the passive properties and leak current into the morphology:
+morphology.passive_properties = passive
+morphology.leak_current = leak
 
-#create the MOOSE environmetnx
-#load a cell, note, at the moment the index of each 
-#loaded compartment is printed for diagnosis because 
-#this operation is hanging for unkown reason.
-print('Building MOOSE environment and importing cell..')
-env = envs.MooseEnv()
-env.import_cell(new_morphology)
+#create a current clamp stimulus:
+stim = kinetics.IClamp(current=0.1,
+                       delay=5.0,
+                       duration=40.0)
 
-print('Creating MOOSE simulation environment')
-#create the MOOSE simulation from the environment:
-sim = envs.MooseSimulation(env,sim_time=1000)
-print('Running simulation:')
-sim.go(simdt=1e-2)
-sim.show()
+#insert the stimulus into the morphology
+morphology[0].insert(stim)
 
-##create the NEURON environment
-env = envs.NeuronEnv()
-env.import_cell(new_morphology)
+#create Na ion channel:
+na_channel = kinetics.HHChannel(name = 'na',
+                                specific_gbar = 120.0,
+                                ion = 'na',
+                                e_rev = 115.0, #115 for squid
+                                x_power = 3.0,
+                                y_power = 1.0)
 
-#create the simulation from the recording section:
-sim = envs.NeuronSimulation(env.sections[0])
+#create K ion channel:
+k_channel = kinetics.HHChannel(name = 'kv',
+                               specific_gbar = 36.0, #36.0 specific Gna in squid model
+                               ion = 'k',
+                               e_rev = -12.0, #calculated from squid demo in moose -e-3 factor removed
+                               x_power = 4.0,
+                               y_power = 0.0)
 
-print 'Topology:'
-print env.topology
+#create dicts containing gating parameters:
+na_m_params = {'A_A':0.1 * (25.0),
+               'A_B': -0.1,
+               'A_C': -1.0,
+               'A_D': -25.0,
+               'A_F':-10.0,
+               'B_A': 4.0,
+               'B_B': 0.0,
+               'B_C': 0.0,
+               'B_D': 0.0,
+               'B_F': 18.0}
 
-sim.go()
-sim.show()
+na_h_params = {'A_A': 0.07, 
+               'A_B': 0.0,  
+               'A_C': 0.0,  
+               'A_D': 0.0,  
+               'A_F': 20.0, 
+               'B_A': 1.0,  
+               'B_B': 0.0,  
+               'B_C': 1.0,  
+               'B_D': -30.0,
+               'B_F': -10.0}
+
+k_n_params = {'A_A': 0.01*(10.0),
+              'A_B': -0.01,
+              'A_C': -1.0,
+              'A_D': -10.0,
+              'A_F': -10.0,
+              'B_A': 0.125,
+              'B_B': 0.0,
+              'B_C': 0.0,
+              'B_D': 0.0,
+              'B_F': 80.0}
+
+#setup the channel gating parameters:
+na_channel.setup_alpha(gate = 'X',
+                       params = na_m_params,
+                       vdivs = 150,
+                       vmin = -30,
+                       vmax = 120)
+
+na_channel.setup_alpha(gate = 'Y',
+                       params = na_h_params,
+                       vdivs = 150,
+                       vmin = -30,
+                       vmax = 120)
+
+k_channel.setup_alpha(gate = 'X',
+                      params = k_n_params,
+                      vdivs = 150,
+                      vmin = -30,
+                      vmax = 120)
+
+#insert the channels:
+morphology[0].insert(na_channel)
+morphology[0].insert(k_channel)
+
+#create the MOOSE environmet:
+moose_env = envs.MooseEnv(sim_time=100,dt=1e-2)
+
+#import morphology into environment:
+moose_env.import_cell(morphology)
+
+#Run the MOOSE simulation:
+moose_env.run_simulation()
+
+#plot simulation results:
+#moose_env.show_simulation()
+
+#create the NEURON environment
+neuron_env = envs.NeuronEnv(sim_time=100,dt=1e-2)
+
+#now should be able to autogenerate these really:
+#sodium_attributes = {'gbar':120e2}
+#na = kinetics.Nmodl('na',sodium_attributes)
+#potassium_attributes = {'gbar':36e2}
+#kv = kinetics.Nmodl('kv',potassium_attributes)
+
+#morphology[0].insert(na)
+#morphology[0].insert(kv)
+
+#import morphology into environment:
+neuron_env.import_cell(morphology)
+
+#run the NEURON simulation
+print 'About to run simulation'
+neuron_env.run_simulation()
+
+#plot simulation results:
+#neuron_env.show_simulation()
+
+neuron_voltage = neuron_env.rec_v
+neuron_time_vector  = neuron_env.rec_t
+
+moose_voltage = moose_env.rec_v
+moose_time_vector  = np.linspace(0, moose_env.t_final, len(moose_env.rec_v))
+
+#Plotting results:
+moose_plot, = plt.plot(moose_time_vector,moose_voltage)
+neuron_plot, = plt.plot(neuron_time_vector,neuron_voltage)
+plt.xlabel("Time in ms")
+plt.ylabel("Voltage in mV")
+plt.legend([moose_plot,neuron_plot],["MOOSE","NEURON"])
+plt.show()
+
+print neuron_env.topology

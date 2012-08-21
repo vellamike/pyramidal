@@ -93,14 +93,79 @@ The final part of the example simply runs some plotting routines to visualise th
 
 .. figure:: /figs/example1.png
    :scale: 100 %
-   :alt: alt..
+   :alt: passive simulation
 
 As can be seen, the result of this passive, single-compartment similation are so similar in NEURON and MOOSE that it is almost impossible to tell there is more than one plot.
 
-Example 2 - Hodgkin Huxley single compartmental simulations
+Example 2 - Hodgkin-Huxley single compartmental simulations
 -----------------------------------------------------------
 
-In this example a single compartment is created and the libNeuroML type "HHChannel" is used to insert some kinetics. Appropriately, this example roughly recreates Hodgkin and Huxley Squid giant axon model.
+This example is the same as Example 1 except that we are now going to use the neuroml kinetics module to add some Hodgkin-Huxely channels. This will allow us to see some action potentials! The libNeuroML type "HHChannel" is used to insert some kinetics. Appropriately, this example roughly recreates Hodgkin and Huxley Squid giant axon model.
+
+Just as in example 1 we created a current clamp stimulus, we are now going to create sodium and potassium ion channel objects:
+
+.. code-block:: python
+
+    #create Na ion channel:
+    na_channel = kinetics.HHChannel(name = 'na',
+                                    specific_gbar = 120.0,
+                                    ion = 'na',
+                                    e_rev = 115.0, #115 for squid
+                                    x_power = 3.0,
+                                    y_power = 1.0)
+    
+    #create K ion channel:
+    k_channel = kinetics.HHChannel(name = 'kv',
+                                   specific_gbar = 36.0, #36.0 specific Gna in squid model
+                                   ion = 'k',
+                                   e_rev = -12.0, #calculated from squid demo in moose -e-3 factor removed
+                                   x_power = 4.0,
+                                   y_power = 0.0)
+    
+Here the xpower and ypower signify the power to which activating("m") and inactivating("h") components of the channel should be raised. The next thing we need to do is set the coefficients which determine the gating parameters governing the alpha and beta opening and closing rates of each gate, the snippet here is for the sodium m gate:
+
+.. code-block:: python
+
+    na_m_params = {'A_A':0.1 * (25.0),
+                   'A_B': -0.1,
+                   'A_C': -1.0,
+                   'A_D': -25.0,
+                   'A_F':-10.0,
+                   'B_A': 4.0,
+                   'B_B': 0.0,
+                   'B_C': 0.0,
+                   'B_D': 0.0,
+                   'B_F': 18.0}
+
+Once these parameters have beend decided, the setup_alpha method is run on each channel, specifying whether coefficients for the X or Y gate are being set, in this snippet we do this for the activating and inacticvating gates:
+
+.. code-block:: python
+
+    #setup the channel gating parameters:
+    na_channel.setup_alpha(gate = 'X',
+                           params = na_m_params,
+                           vdivs = 150,
+                           vmin = -30,
+                           vmax = 120)
+    
+    na_channel.setup_alpha(gate = 'Y',
+                           params = na_h_params,
+                           vdivs = 150,
+                           vmin = -30,
+                           vmax = 120)
+
+Just like the current clamp stimulus in example 1, the ion channel is inserted into a specific segment:
+
+.. code-block:: python
+
+    morphology[0].insert(na_channel)
+    morphology[0].insert(k_channel)
+
+The MOOSE and NEURON environments are created and morphology imported just as before. Once the simulation is run you should get a plot looking something like this:
+
+.. figure:: /figs/example2.png
+   :scale: 100 %
+   :alt: passive simulation
 
 Example 3 -
 ---------

@@ -36,7 +36,7 @@ stim = kinetics.IClamp(current=0.1,
                        delay=5.0,
                        duration=40.0)
 
-#insert the stimulus into the morphology
+#insert the stimulus into the morphology:
 morphology[0].insert(stim)
 
 #create Na ion channel:
@@ -113,7 +113,8 @@ morphology[0].insert(na_channel)
 morphology[0].insert(k_channel)
 
 #create the MOOSE environmet:
-moose_env = envs.MooseEnv(sim_time=100,dt=1e-2)
+moose_env = envs.MooseEnv(sim_time=100,
+                          dt=1e-2)
 
 #import morphology into environment:
 moose_env.import_cell(morphology)
@@ -127,24 +128,12 @@ moose_env.run_simulation()
 #create the NEURON environment
 neuron_env = envs.NeuronEnv(sim_time=100,dt=1e-2)
 
-#now should be able to autogenerate these really:
-#sodium_attributes = {'gbar':120e2}
-#na = kinetics.Nmodl('na',sodium_attributes)
-#potassium_attributes = {'gbar':36e2}
-#kv = kinetics.Nmodl('kv',potassium_attributes)
-
-#morphology[0].insert(na)
-#morphology[0].insert(kv)
-
 #import morphology into environment:
 neuron_env.import_cell(morphology)
 
 #run the NEURON simulation
 print 'About to run simulation'
 neuron_env.run_simulation()
-
-#plot simulation results:
-#neuron_env.show_simulation()
 
 neuron_voltage = neuron_env.rec_v
 neuron_time_vector  = neuron_env.rec_t
@@ -159,5 +148,3 @@ plt.xlabel("Time in ms")
 plt.ylabel("Voltage in mV")
 plt.legend([moose_plot,neuron_plot],["MOOSE","NEURON"])
 plt.show()
-
-print neuron_env.topology

@@ -1,80 +1,67 @@
-"""
-Simulation of passive properties in NEURON and MOOSE
-"""
-
 import neuroml.morphology as ml
 import neuroml.kinetics as kinetics
+import neuroml.loaders as loaders
 import pyramidal.environments as envs
-from matplotlib import pyplot as plt
-import numpy as np
+from neuron import h
 
-#First build a compartment:
-compartment = ml.Segment(length=500,
-                         proximal_diameter=500,
-                         distal_diameter=500)
+print('Building axon:')
+#Create an axon:
+iseg=ml.Segment(length=10,proximal_diameter=1,distal_diameter=2)
+myelin1=ml.Segment(length=100,proximal_diameter=3,distal_diameter=4)
+node1=ml.Segment(length=10,proximal_diameter=5,distal_diameter=6)
+myelin2=ml.Segment(length=100,proximal_diameter=7,distal_diameter=8)
+node2=ml.Segment(length=10.0,proximal_diameter=9,distal_diameter=10)
+iseg.attach(myelin1)
+myelin1.attach(node1)
+node1.attach(myelin2)
+myelin2.attach(node2)
 
-#Create a PassiveProperties object:
-passive = kinetics.PassiveProperties(init_vm=-0.0,
-                                     rm=1/0.3,
-                                     cm=1.0,
-                                     ra=0.03)
+#load a cell, note, at the moment the index of each 
+#loaded compartment is printed for diagnosis because 
+#this operation is hanging for unkown reason.
+print('Loading cell:')
+doc = loaders.NeuroMLLoader.load_neuroml('/home/mike/dev/libNeuroML/testFiles/Purk2M9s.nml')
+cell = doc.cells[0]
+morph = cell.morphology
 
-#Create a LeakCurrent object:
-leak = kinetics.LeakCurrent(em=10.0)
+#attach iseg to the soma of loaded cell:
+print('Attaching axon to loaded cell:')
+morph[0].attach(iseg)
 
-#Get the Morphology object which the compartment is part of:
-morph = compartment.morphology
+#obtain the new morphology object:
+new_morphology=morph.morphology
 
-#insert the passive properties and leak current into the morphology:
-morph.passive_properties = passive
-morph.leak_current = leak
+print('Inserting current clamp:')
+#create the current clamp stimulus:
+stim = kinetics.IClamp(0.1,300,100)
 
-#create a current clamp stimulus:
-stim = kinetics.IClamp(current=0.1,
-                       delay=5.0,
-                       duration=40.0)
+#insert the stimulus:
+new_morphology[0].insert(stim)
 
-#insert the stimulus into the morphology, note that unlike with the passive and leak currents which were
-#inserted into the morphology as a whole, the current clamp, being a point current, is inserted into a segment,
-#hence the morph[0] statement - this means the first segment in the morphology (in our case slightly irrelevant
-#as the morphology only contains one segment anyway)
-morph[0].insert(stim)
+#create the MOOSE environmetnx
+#load a cell, note, at the moment the index of each 
+#loaded compartment is printed for diagnosis because 
+#this operation is hanging for unkown reason.
+print('Building MOOSE environment and importing cell..')
+env = envs.MooseEnv()
+env.import_cell(new_morphology)
 
-#We're now ready to run some simulations of a neuron with a leak current:
+print('Creating MOOSE simulation environment')
+#create the MOOSE simulation from the environment:
+sim = envs.MooseSimulation(env,sim_time=1000)
+print('Running simulation:')
+sim.go(simdt=1e-2)
+sim.show()
 
-#Create the MOOSE environmet:
-moose_env = envs.MooseEnv(sim_time=100,
-                          dt=1e-2)
+##create the NEURON environment
+env = envs.NeuronEnv()
+env.import_cell(new_morphology)
 
-#import morphology into environment:
-moose_env.import_cell(morph)
+#create the simulation from the recording section:
+sim = envs.NeuronSimulation(env.sections[0])
 
-#Run the MOOSE simulation:
-moose_env.run_simulation()
+print 'Topology:'
+print env.topology
 
-#Now do the same for NEURON:
-
-#create the NEURON environment
-neuron_env = envs.NeuronEnv(sim_time=100,
-                            dt=1e-2)
-
-#import morphology into environment:
-neuron_env.import_cell(morph)
-
-#run the NEURON simulation
-neuron_env.run_simulation()
-
-#Get the voltage traces:
-neuron_voltage = neuron_env.rec_v
-neuron_time_vector  = neuron_env.rec_t
-
-moose_voltage = moose_env.rec_v
-moose_time_vector  = np.linspace(0, moose_env.t_final, len(moose_env.rec_v))
-
-#Plot the results:
-moose_plot, = plt.plot(moose_time_vector,moose_voltage)
-neuron_plot, = plt.plot(neuron_time_vector,neuron_voltage)
-plt.xlabel("Time in ms")
-plt.ylabel("Voltage in mV")
-plt.legend([moose_plot,neuron_plot],["MOOSE","NEURON"])
-plt.show()
+sim.go()
+sim.show()
