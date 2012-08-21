@@ -3,7 +3,28 @@ Examples
 
 Example 1 - Passive properties
 ------------------------------
-This example serves as an introduction to pyramidal usage
+This example serves as an introduction to pyramidal usage. Let's jump straight in and examine the code.
+
+We have the following interesting import statements:
+
+.. code-block:: python
+
+    import neuroml.morphology as ml
+    import neuroml.kinetics as kinetics
+    import pyramidal.environments as envs
+
+* The neuroml morphology module provides support for dealing with compartments - their dimensions and their connectivity. 
+* The neuroml kinetics module provides objects with a time-dependent element to their behaviour. This includes things like point currents.
+* The pyramidal environments module provides support for interfacing with different simulators. An "environment" in this context can be thought of an entire simulator contained within an object.
+
+The syntax for making a compartment is intuitive:
+
+.. code-block:: python
+
+    compartment = ml.Segment(length=500,
+                             proximal_diameter=500,
+                             distal_diameter=500)
+
 
 
 Assuming the example runs correctly, you should get a plot looking like this:
@@ -11,6 +32,8 @@ Assuming the example runs correctly, you should get a plot looking like this:
 .. figure:: /figs/example1.png
    :scale: 100 %
    :alt: alt..
+
+As can be seen, the result of this passive, single-compartment similation are so similar in NEURON and MOOSE that it is almost impossible to tell there is more than one plot.
 
 Example 2 - Hodgkin Huxley single compartmental simulations
 -----------------------------------------------------------
