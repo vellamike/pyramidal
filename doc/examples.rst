@@ -1,8 +1,8 @@
 Examples
 ========
 
-Example 1 - Passive properties
-------------------------------
+Example 1 - A passive neuron
+----------------------------
 This example serves as an introduction to pyramidal usage. Let's jump straight in and examine the code.
 
 We have the following interesting import statements:
@@ -62,6 +62,7 @@ We now use the neuroml kinetics module to create a current clamp stimulus. Other
 All that now remains is to create the MOOSE and NEURON environments and run the simulations, the syntax is the same for both environments. Here's MOOSE:
 
 .. code-block:: python
+
     #Create the MOOSE environmet:
     moose_env = envs.MooseEnv(sim_time=100,
                               dt=1e-2)
@@ -77,7 +78,8 @@ And NEURON:
 .. code-block:: python
 
     #create the NEURON environment
-    neuron_env = envs.NeuronEnv(sim_time=100,dt=1e-2)
+    neuron_env = envs.NeuronEnv(sim_time=100,
+                                dt=1e-2)
     
     #import morphology into environment:
     neuron_env.import_cell(morph)

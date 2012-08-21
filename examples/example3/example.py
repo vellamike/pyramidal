@@ -55,7 +55,8 @@ moose_env.run_simulation()
 #Now do the same for NEURON:
 
 #create the NEURON environment
-neuron_env = envs.NeuronEnv(sim_time=100,dt=1e-2)
+neuron_env = envs.NeuronEnv(sim_time=100,
+                            dt=1e-2)
 
 #import morphology into environment:
 neuron_env.import_cell(morph)
