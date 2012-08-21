@@ -1,8 +1,5 @@
 """
-Simple use case of libNeuroML + Pyramidal
-
-A simple, single-compartmental neuron is created using libNeuroML
-and a simple simulation is run in both NEURON and MOOSE
+Simulation of a current injection into a passive compartment
 """
 
 import neuroml.morphology as ml
@@ -38,79 +35,6 @@ stim = kinetics.IClamp(current=0.1,
 
 #insert the stimulus into the morphology:
 morphology[0].insert(stim)
-
-#create Na ion channel:
-na_channel = kinetics.HHChannel(name = 'na',
-                                specific_gbar = 120.0,
-                                ion = 'na',
-                                e_rev = 115.0, #115 for squid
-                                x_power = 3.0,
-                                y_power = 1.0)
-
-#create K ion channel:
-k_channel = kinetics.HHChannel(name = 'kv',
-                               specific_gbar = 36.0, #36.0 specific Gna in squid model
-                               ion = 'k',
-                               e_rev = -12.0, #calculated from squid demo in moose -e-3 factor removed
-                               x_power = 4.0,
-                               y_power = 0.0)
-
-#create dicts containing gating parameters:
-na_m_params = {'A_A':0.1 * (25.0),
-               'A_B': -0.1,
-               'A_C': -1.0,
-               'A_D': -25.0,
-               'A_F':-10.0,
-               'B_A': 4.0,
-               'B_B': 0.0,
-               'B_C': 0.0,
-               'B_D': 0.0,
-               'B_F': 18.0}
-
-na_h_params = {'A_A': 0.07, 
-               'A_B': 0.0,  
-               'A_C': 0.0,  
-               'A_D': 0.0,  
-               'A_F': 20.0, 
-               'B_A': 1.0,  
-               'B_B': 0.0,  
-               'B_C': 1.0,  
-               'B_D': -30.0,
-               'B_F': -10.0}
-
-k_n_params = {'A_A': 0.01*(10.0),
-              'A_B': -0.01,
-              'A_C': -1.0,
-              'A_D': -10.0,
-              'A_F': -10.0,
-              'B_A': 0.125,
-              'B_B': 0.0,
-              'B_C': 0.0,
-              'B_D': 0.0,
-              'B_F': 80.0}
-
-#setup the channel gating parameters:
-na_channel.setup_alpha(gate = 'X',
-                       params = na_m_params,
-                       vdivs = 150,
-                       vmin = -30,
-                       vmax = 120)
-
-na_channel.setup_alpha(gate = 'Y',
-                       params = na_h_params,
-                       vdivs = 150,
-                       vmin = -30,
-                       vmax = 120)
-
-k_channel.setup_alpha(gate = 'X',
-                      params = k_n_params,
-                      vdivs = 150,
-                      vmin = -30,
-                      vmax = 120)
-
-#insert the channels:
-morphology[0].insert(na_channel)
-morphology[0].insert(k_channel)
 
 #create the MOOSE environmet:
 moose_env = envs.MooseEnv(sim_time=100,
