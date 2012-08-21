@@ -25,3 +25,7 @@ Example 2 is incomplete - the aim of this example will be to show visualisation 
 
 Example 5 - Mutli-compartmental models
 --------------------------------------
+
+.. note ::
+    As of 21/08/12 mutli-compartmental modelling is still buggy. This is thought to be down to some unresolved issues in setting axial resistance which will soon be resolved.
+ 
