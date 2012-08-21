@@ -5,8 +5,11 @@ Example 1 - Passive properties
 ------------------------------
 This example serves as an introduction to pyramidal usage
 
+
+Assuming the example runs correctly, you should get a plot looking like this:
+
 .. figure:: /figs/example1.png
-   :scale: 20 %
+   :scale: 30 %
    :alt: alt..
 
 Example 2 - Hodgkin Huxley single compartmental simulations
