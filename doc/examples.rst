@@ -75,6 +75,7 @@ All that now remains is to create the MOOSE and NEURON environments and run the 
 And NEURON:
 
 .. code-block:: python
+
     #create the NEURON environment
     neuron_env = envs.NeuronEnv(sim_time=100,dt=1e-2)
     
