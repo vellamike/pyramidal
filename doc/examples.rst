@@ -116,9 +116,9 @@ Just as in example 1 we created a current clamp stimulus, we are now going to cr
     
     #create K ion channel:
     k_channel = kinetics.HHChannel(name = 'kv',
-                                   specific_gbar = 36.0, #36.0 specific Gna in squid model
+                                   specific_gbar = 36.0,
                                    ion = 'k',
-                                   e_rev = -12.0, #calculated from squid demo in moose -e-3 factor removed
+                                   e_rev = -12.0,
                                    x_power = 4.0,
                                    y_power = 0.0)
     
@@ -222,7 +222,7 @@ In order to get the new morphology the following needs to be done:
 This is because the morph object still refers to the loaded morphology, these objects are not automatically updated with new segments when an attach method is run but always refer to the segments which they contained at initialization.
 
 
-Example 4 - working with mod files
+Example 4 - Working with mod files
 ----------------------------------
 
 It is still possible to use mod files as long as you are working only with the NEURON environment. As with the Python library for NEURON, the mod files need to be in the top-level directory where your simulation script is located. The first thing you need to do is run the nrnivmodl command:
