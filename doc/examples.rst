@@ -167,22 +167,63 @@ The MOOSE and NEURON environments are created and morphology imported just as be
    :scale: 100 %
    :alt: hodgkin_huxely_simulation
 
-Example 3 -
+Example 3 - Multi compartmental morphology construction
 ---------
-Example 1 (./examples/example1.py) is an example of manually building an axon from libneuroml objects, loading a cell from file, attaching the axon initial segment to the loaded cell soma and running the same simulation NEURON and MOOSE, please run the file look at the inline comments of example1.py file. This should be the first example to show the same simulation produced by NEURON and MOOSE. Currently however there are some issues which have not been resolved:
-
-* Passive properties of the neurons are different currently different. This issue should be easy to resolve.
-* The MOOSE current clamp (PulseGen in MOOSE-Speak) object behaves differently to the NEURON object. In MOOSE the current is reinjected periodically after a period of 'PulseGen.delay'. This issue should be easy to resolve
-* In MOOSE the segment connectivity is accounted for, but as yet segment dimensions are not.
-    
-Example 4 - 
----------
-Example 2 is incomplete - the aim of this example will be to show visualisation using NeuronVisio.
-
-
-Example 5 - Mutli-compartmental models
---------------------------------------
 
 .. note::
-    As of 21/08/12 mutli-compartmental modelling is still buggy. This is thought to be down to some unresolved issues in setting axial resistance which will soon be resolved.
- 
+    As of 21/08/12 mutli-compartmental modelling is still buggy. This is because of some unresolved issues in setting axial resistance which will soon be resolved.
+
+This example demonstrates: 
+
+* Loading morphologies from neuroml files
+* Constructing morphologies "by hand" from compartments
+* Combining loaded morphologies with "hand made" ones, typically for adding an axon to a morphology or "fixing" incomplete morphologies.
+
+First an axon is created by creating each segment and attaching them in the right order:
+
+.. code-block:: python
+
+    #Create an axon:
+    iseg=ml.Segment(length=10,proximal_diameter=1,distal_diameter=2)
+    myelin1=ml.Segment(length=100,proximal_diameter=3,distal_diameter=4)
+    node1=ml.Segment(length=10,proximal_diameter=5,distal_diameter=6)
+    myelin2=ml.Segment(length=100,proximal_diameter=7,distal_diameter=8)
+    node2=ml.Segment(length=10.0,proximal_diameter=9,distal_diameter=10)
+    
+    #attatch all the segments together, in the right order:
+    iseg.attach(myelin1)
+    myelin1.attach(node1)
+    node1.attach(myelin2)
+    myelin2.attach(node2)
+
+A cell is loaded from a neuroml file, the cells attribute in the doc object is a list of cell objects.
+
+.. code-block:: python
+
+    #load a cell from a neuroml file
+    doc = loaders.NeuroMLLoader.load_neuroml('./Purk2M9s.nml')
+    cell = doc.cells[0]
+    morph = cell.morphology
+
+The soma (assumed to be located at index == 0 in the morphology) is attached to the initial segment:
+
+.. code-block:: python
+
+    #attach iseg to the soma of loaded cell:
+    morph[0].attach(iseg)
+
+In order to get the new morphology the following needs to be done:
+
+.. code-block:: python
+
+    #obtain the new morphology object:
+    new_morphology=morph.morphology
+
+This is because the morph object still refers to the loaded morphology, these objects are not automatically updated with new segments when an attach method is run but always refer to the segments which they contained at initialization.
+
+
+Example 4 - working with MOD files
+----------------------------------
+
+It is still possible to use mod files
+
