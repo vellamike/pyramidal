@@ -18,7 +18,7 @@ from subprocess import call
 
 #build some compartments:
 compartment = ml.Segment(length=500,proximal_diameter=500,distal_diameter=500)
-#compartment_2 = ml.Segment(length=10,proximal_diameter=10,distal_diameter=10)
+#compartment_2 = ml.Segment(length=500,proximal_diameter=500,distal_diameter=500)
 #compartment.attach(compartment_2)
 
 #get the morphology:
