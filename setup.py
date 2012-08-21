@@ -6,7 +6,7 @@ long_description = None
 
 setup(
     name = "pyramidal",
-    version = '0.1.0dev',
+    version = '0.1.0',
     packages = ['pyramidal'],
     author = "Mike Vella",
     author_email = "<...>",
