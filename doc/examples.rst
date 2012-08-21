@@ -1,6 +1,8 @@
 Examples
 ========
 
+All these examples are located in the /examples folder
+
 Example 1 - A passive neuron
 ----------------------------
 This example serves as an introduction to pyramidal usage. Let's jump straight in and examine the code.
