@@ -169,7 +169,7 @@ The MOOSE and NEURON environments are created and morphology imported just as be
    :alt: hodgkin_huxely_simulation
 
 Example 3 - Multi compartmental morphology construction
----------
+-------------------------------------------------------
 
 .. note::
     As of 21/08/12 mutli-compartmental modelling is still buggy. This is because of some unresolved issues in setting axial resistance which will soon be resolved.
