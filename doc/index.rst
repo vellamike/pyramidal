@@ -5,7 +5,8 @@
 
 Pyramidal
 =====================================
-
+A simulator-independent API for multi-compartmental modelling of neurons
+------------------------------------------------------------------------
 Contents:
 
 .. toctree::
@@ -31,4 +32,5 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
 
