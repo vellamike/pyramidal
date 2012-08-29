@@ -144,7 +144,7 @@ In terms of the Hodgkin Huxley formalism, these parameters have the following me
 
 #.. math:: 
 
-#    y(x) = (A + B * x) / (C + exp((x + D) / F))
+    y(x) = (A + B * x) / (C + exp((x + D) / F))
 
 
 
