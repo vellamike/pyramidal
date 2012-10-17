@@ -330,7 +330,7 @@ class MooseEnv(SimulatorEnv):
             
         # This is a container for the model
         model = moose.Neutral('/model') 
-        
+
         print('Creating MOOSE compartments:')
         for index,seg in enumerate(cell.morphology):
             path = '/model/' + str(index)
