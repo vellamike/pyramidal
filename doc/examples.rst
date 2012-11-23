@@ -140,9 +140,7 @@ Here the xpower and ypower signify the power to which activating("m") and inacti
 
 In terms of the Hodgkin Huxley formalism, these parameters have the following meaning:
 
-.. math::
-
-    y(x) = (A + B * x) / (C + exp((x + D) / F))
+.. math:: 'y(x) = (A + B * x) / (C + exp((x + D) / F))'
 
 
 

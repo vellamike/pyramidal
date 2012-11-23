@@ -59,6 +59,7 @@ class NeuronEnv(SimulatorEnv):
 
         self.sim_time = sim_time
         self.dt = dt # 1e3Factor needed here because of NEURON units
+        self.simulation_initialized = False
 
     def import_cell(self,cell):
 
@@ -254,20 +255,31 @@ class NeuronEnv(SimulatorEnv):
         voltage = np.array(self.rec_v)
         return time, voltage
 
-    def run_simulation(self,sim_time=None):
+    def __init_simulation(self):
 
         self.set_recording()
         self.neuron.h.dt = self.dt
         self.neuron.h.finitialize(self.init_vm)
-
         self.neuron.init()
-
+        self.simulation_initialized = True
+    
+    def run_simulation(self,sim_time=None):
+        if not self.simulation_initialized:
+            self.__init_simulation()
+        
         if sim_time:
             self.neuron.run(sim_time)
         else:
             self.neuron.run(self.sim_time)
         self.go_already = True
-
+        
+    def advance_simulation(self,increment):
+        if not self.simulation_initialized:
+            self.__init_simulation()
+        t_now = self.neuron.h.t
+        while self.neuron.h.t < t_now + increment:
+            self.neuron.h.fadvance()
+        
     def get_tau_eff(self, ip_flag=False, ip_resol=0.01):
         time, voltage = self.get_recording()
         vsa = np.abs(voltage - voltage[0]) #vsa: voltage shifted and absolut
