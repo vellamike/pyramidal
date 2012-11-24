@@ -66,7 +66,7 @@ class NeuronEnv(SimulatorEnv):
         self.segments_sections_dict={}
         self.sections = []
         self.cell = cell
-        
+
         #this is a clumsy but necessary step:
         self._precompile_mod_files()
 
@@ -266,7 +266,6 @@ class NeuronEnv(SimulatorEnv):
     def run_simulation(self,sim_time=None):
         if not self.simulation_initialized:
             self.__init_simulation()
-        
         if sim_time:
             self.neuron.run(sim_time)
         else:
