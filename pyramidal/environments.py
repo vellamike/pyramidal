@@ -19,8 +19,12 @@ import neuroml.loaders as loaders
 import os
 import math
 
-#import simulator libraries:
-import moose
+#import simulator libraries, this should be inside moosenv
+try:
+    import moose
+except:
+    pass
+
 
 
 class SimulatorEnv(object):
@@ -55,7 +59,8 @@ class NeuronEnv(SimulatorEnv):
     model into a NEURON-specific in-memory representation.
     """
    
-    def __init__(self,sim_time=1,dt=1e-4):
+    def __init__(self,sim_time=1,dt=1e-4,make_mod_files=True):
+        self.make_mod_files=make_mod_files
 
         self.sim_time = sim_time
         self.dt = dt # 1e3Factor needed here because of NEURON units
@@ -68,7 +73,8 @@ class NeuronEnv(SimulatorEnv):
         self.cell = cell
 
         #this is a clumsy but necessary step:
-        self._precompile_mod_files()
+        if self.make_mod_files:
+            self._precompile_mod_files()
 
         import neuron
         self.neuron = neuron
