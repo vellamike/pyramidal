@@ -2,16 +2,27 @@
 Simulation of a current injection into a passive compartment
 """
 
-import neuroml.morphology as ml
-import neuroml.kinetics as kinetics
+import neuroml
 import pyramidal.environments as envs
 from matplotlib import pyplot as plt
 import numpy as np
 
 #First build a compartment:
-compartment = ml.Segment(length=500,proximal_diameter=500,distal_diameter=500)
+p = neuroml.Point3DWithDiam(x=0, y=0, z=0, diameter=500)
+p = neuroml.Point3DWithDiam(x=0, y=0, z=500, diameter=500)
+
+compartment = ml.Segment(proximal=p, distal=d)
 
 #Create a PassiveProperties object:
+
+membrane_properties = neuroml.MembraneProperties(specific_capacitance=1.0,
+                                                 init_memb_potential=-0.0)
+
+intracellular_properties = neuroml.IntracellularProperties(resistivity=1/0.3,
+
+passive = neuroml.BiophysicalProperties()
+                                     
+
 passive = kinetics.PassiveProperties(init_vm=-0.0,
                                      rm=1/0.3,
                                      cm=1.0,
